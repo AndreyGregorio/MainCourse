@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-maincourse-cream font-sans text-maincourse-navy antialiased;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: none;
+  }
+
+  ::selection {
+    @apply bg-maincourse-gold/30 text-maincourse-navy;
+  }
+
+  /* Safari/iOS dá zoom quando o campo tem fonte menor que 16px. */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  button {
+    touch-action: manipulation;
+  }
+
+  :focus-visible {
+    outline: 2px solid theme('colors.maincourse-gold');
+    outline-offset: 2px;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: theme('colors.maincourse-gold') transparent;
+  }
+}

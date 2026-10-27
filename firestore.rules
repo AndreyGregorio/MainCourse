@@ -1,0 +1,55 @@
+rules_version = '2';
+
+// Regras do Cloud Firestore — MainCourse (Release 1).
+//
+// A Release 1 usa duas coleções: `pratos` e `ingredientes`.
+// O acesso exige uma sessão (mesmo anônima), criada pelo app em
+// src/firebaseConfig.ts. Sem o provedor "Anônimo" ativo no Firebase
+// Authentication, nada é lido nem gravado.
+//
+// Como publicar:
+//   1. Firebase Console → Firestore Database → Regras.
+//   2. Cole este arquivo e clique em Publicar.
+//   Ou, com a CLI: firebase deploy --only firestore:rules --project SEU_PROJETO
+//
+// Ao chegar nas releases R02/R03, acrescente as coleções novas aqui.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function autenticado() {
+      return request.auth != null;
+    }
+
+    // O DRE limita o nome a 60 caracteres e exige preenchimento.
+    function nomeValido() {
+      return request.resource.data.nome is string
+        && request.resource.data.nome.size() >= 2
+        && request.resource.data.nome.size() <= 60;
+    }
+
+    // Coleção `pratos` — RFS01 a RFS04.
+    match /pratos/{pratoId} {
+      allow read: if autenticado();
+      allow create, update: if autenticado()
+        && request.resource.data.keys().hasOnly(['nome'])
+        && nomeValido();
+      allow delete: if autenticado();
+    }
+
+    // Coleção `ingredientes` — RFS05 a RFS08.
+    match /ingredientes/{ingredienteId} {
+      allow read: if autenticado();
+      allow create, update: if autenticado()
+        && request.resource.data.keys().hasOnly(['nome', 'unidade_medida'])
+        && nomeValido()
+        && request.resource.data.unidade_medida in ['kg', 'L', 'un'];
+      allow delete: if autenticado();
+    }
+
+    // Nenhuma outra coleção é acessível nesta release.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
