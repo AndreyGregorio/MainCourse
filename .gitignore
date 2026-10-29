@@ -1,0 +1,36 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Dependências e build
+node_modules
+dist
+dist-ssr
+.firebase
+
+# Configuração local do Firebase CLI
+.firebaserc
+.firebase/
+
+# Variáveis de ambiente (as chaves ficam nos Secrets do GitHub)
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.sw?
+
+# Testes
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+tests/**/screenshots/
