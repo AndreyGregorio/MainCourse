@@ -13,6 +13,15 @@ dist-ssr
 .firebaserc
 .firebase/
 
+# Artefatos do Selenium Manager em ambientes sem cache
+chromedriver/
+selenium-manager.log
+
+# Logs dos emuladores do Firebase
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
 # Variáveis de ambiente (as chaves ficam nos Secrets do GitHub)
 .env
 .env.local
@@ -29,6 +38,7 @@ dist-ssr
 
 # Testes
 __pycache__/
+*.tsbuildinfo
 *.py[cod]
 .venv/
 venv/

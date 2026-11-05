@@ -101,25 +101,33 @@ Não esqueça: **Authentication → Settings → Authorized domains** precisa te
 
 ## 8. Tags e GitHub Releases
 
-Cada release é um commit + uma tag. Para a R01:
+Cada release é um commit + uma tag + uma GitHub Release com as notas do arquivo
+`docs/releases/rXX.md`. A R01 já foi publicada assim:
 
 ```bash
-git add -A
-git commit -m "feat(r01): CRUD de pratos e ingredientes + identidade MainCourse"
 git tag -a r01 -m "Release 1 — Pratos e ingredientes"
-git push origin main
 git push origin r01
-```
-
-Crie a Release no GitHub (interface ou CLI):
-
-```bash
-gh release create r01 \
-  --title "Release 1 — Pratos e ingredientes" \
+gh release create r01 --title "Release 1 — Pratos e ingredientes" \
   --notes-file docs/releases/r01.md
 ```
 
-O arquivo [`docs/releases/r01.md`](releases/r01.md) já está no formato de notas de release.
+Para a **R02** (receitas e despensa):
+
+```bash
+git add -A
+git commit -m "feat(r02): receitas, despensa e navegação por seções"
+git tag -a r02 -m "Release 2 — Receitas e despensa"
+git push origin main
+git push origin r02
+gh release create r02 --title "Release 2 — Receitas e despensa" \
+  --notes-file docs/releases/r02.md
+```
+
+Antes do push, confirme que o `firestore.rules` desta release foi publicado no Firebase
+(Firestore → Regras). O deploy do Pages não publica regras.
+
+As notas ficam em [`docs/releases/r01.md`](releases/r01.md) e
+[`docs/releases/r02.md`](releases/r02.md), no formato de release notes.
 
 ## 9. Domínio próprio (opcional)
 
@@ -168,5 +176,6 @@ visitante para a raiz.
 - [ ] Workflow verde
 - [ ] `https://andreygregorio.github.io/MainCourse/` abre o app
 - [ ] Domínio autorizado no Firebase
-- [ ] Tag `r01` e GitHub Release criadas
-- [ ] Cadastro de prato e ingrediente testado no site publicado
+- [ ] Tag `r02` e GitHub Release criadas
+- [ ] Regras do Firestore da R02 publicadas
+- [ ] Cadastro de prato, ingrediente, receita e item da despensa testado no site publicado

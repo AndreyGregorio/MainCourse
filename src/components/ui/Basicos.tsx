@@ -71,6 +71,27 @@ export function Campo({ rotulo, dica, children, className = '' }: PropsCampo) {
   );
 }
 
+export function BotaoLink({
+  href,
+  children,
+  variante = 'secundario',
+  className = '',
+}: {
+  href: string;
+  children: ReactNode;
+  variante?: Variante;
+  className?: string;
+}) {
+  return (
+    <a
+      href={href}
+      className={`inline-flex touch-manipulation items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition sm:text-base ${VARIANTES[variante]} ${className}`}
+    >
+      {children}
+    </a>
+  );
+}
+
 export function Entrada({ className = '', ...resto }: InputHTMLAttributes<HTMLInputElement>) {
   return <input {...resto} className={`${CLASSE_CAMPO} ${className}`} />;
 }
@@ -116,12 +137,14 @@ export function Selo({
   tom = 'navy',
 }: {
   children: ReactNode;
-  tom?: 'navy' | 'gold' | 'cinza';
+  tom?: 'navy' | 'gold' | 'cinza' | 'verde' | 'vermelho';
 }) {
   const tons = {
     navy: 'bg-maincourse-navy/8 text-maincourse-navy',
     gold: 'bg-maincourse-gold/20 text-maincourse-navy',
     cinza: 'bg-maincourse-navy/5 text-maincourse-navy/55',
+    verde: 'bg-emerald-600/10 text-emerald-800',
+    vermelho: 'bg-maincourse-red/10 text-maincourse-red',
   } as const;
 
   return (

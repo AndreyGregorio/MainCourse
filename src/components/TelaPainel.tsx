@@ -1,67 +1,101 @@
-import type { Ingrediente, Prato, Unidade } from '../types';
+import { useMemo } from 'react';
+import type { Dados } from '../hooks/useDados';
+import type { Acoes } from '../hooks/useAcoes';
+import type { Parametros } from '../hooks/useRota';
+import type { RotaId } from '../lib/rotas';
+import { ROTAS } from '../lib/rotas';
+import { PainelInicio } from './painel/PainelInicio';
 import { GestaoPratos } from './painel/GestaoPratos';
 import { GestaoIngredientes } from './painel/GestaoIngredientes';
+import { GestaoReceitas } from './painel/GestaoReceitas';
+import { GestaoDespensa } from './painel/GestaoDespensa';
 
 type Props = {
-  pratos: Prato[];
-  ingredientes: Ingrediente[];
-  aoSalvarPrato: (nome: string, nomeOriginal?: string) => Promise<boolean>;
-  aoRemoverPrato: (nome: string) => Promise<boolean>;
-  aoCriarIngrediente: (nome: string, unidade: Unidade) => Promise<boolean>;
-  aoAtualizarUnidade: (nome: string, unidade: Unidade) => Promise<boolean>;
-  aoRemoverIngrediente: (nome: string) => Promise<boolean>;
+  rota: RotaId;
+  parametros: Parametros;
+  irPara: (rota: RotaId, parametros?: Parametros) => void;
+  dados: Dados;
+  acoes: Acoes;
 };
 
-function Indicador({ valor, rotulo }: { valor: string | number; rotulo: string }) {
-  return (
-    <div className="rounded-2xl border border-maincourse-navy/10 bg-white px-4 py-3 text-center shadow-sm">
-      <span className="block font-display text-2xl font-bold leading-none text-maincourse-navy">
-        {valor}
-      </span>
-      <span className="mt-1 block text-[11px] font-semibold uppercase tracking-wide text-maincourse-navy/45">
-        {rotulo}
-      </span>
-    </div>
+export function TelaPainel({ rota, parametros, irPara, dados, acoes }: Props) {
+  const receitasPorPrato = useMemo(
+    () =>
+      new Map(
+        [...dados.receitasPorPrato.entries()].map(([pratoId, receitas]) => [
+          pratoId,
+          receitas.length,
+        ]),
+      ),
+    [dados.receitasPorPrato],
   );
-}
 
-export function TelaPainel({
-  pratos,
-  ingredientes,
-  aoSalvarPrato,
-  aoRemoverPrato,
-  aoCriarIngrediente,
-  aoAtualizarUnidade,
-  aoRemoverIngrediente,
-}: Props) {
-  const unidadesEmUso = new Set(ingredientes.map((item) => item.unidade_medida)).size;
+  const usosPorIngrediente = useMemo(
+    () =>
+      new Map(
+        [...dados.receitasPorIngrediente.entries()].map(([ingredienteId, receitas]) => [
+          ingredienteId,
+          receitas.length,
+        ]),
+      ),
+    [dados.receitasPorIngrediente],
+  );
+
+  const pratoInicial = rota === 'receitas' ? parametros.prato : undefined;
+  const tituloRota = ROTAS.find((item) => item.id === rota)?.rotulo ?? '';
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8">
-      <section className="text-center">
-        <h1 className="font-display text-3xl font-bold text-maincourse-navy sm:text-4xl">
-          Painel de Controle
-        </h1>
-        <p className="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-maincourse-navy/55 sm:text-base">
-          Cadastre os pratos e os ingredientes da casa
-        </p>
-      </section>
+    <div data-rota={rota} className="pb-4">
+      <span className="sr-only" aria-live="polite">
+        {tituloRota}
+      </span>
 
-      <section className="grid grid-cols-3 gap-3" aria-label="Resumo do cadastro">
-        <Indicador valor={pratos.length} rotulo="Pratos" />
-        <Indicador valor={ingredientes.length} rotulo="Ingredientes" />
-        <Indicador valor={unidadesEmUso} rotulo="Unidades em uso" />
-      </section>
+      {rota === 'inicio' && <PainelInicio dados={dados} irPara={irPara} />}
 
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
-        <GestaoPratos pratos={pratos} aoSalvar={aoSalvarPrato} aoRemover={aoRemoverPrato} />
-        <GestaoIngredientes
-          ingredientes={ingredientes}
-          aoCriar={aoCriarIngrediente}
-          aoAtualizarUnidade={aoAtualizarUnidade}
-          aoRemover={aoRemoverIngrediente}
+      {rota === 'pratos' && (
+        <GestaoPratos
+          pratos={dados.pratos}
+          receitasPorPrato={receitasPorPrato}
+          aoSalvar={acoes.salvarPrato}
+          aoRemover={acoes.removerPrato}
+          aoAbrirReceitas={(pratoId) => irPara('receitas', { prato: pratoId })}
         />
-      </div>
+      )}
+
+      {rota === 'ingredientes' && (
+        <GestaoIngredientes
+          ingredientes={dados.ingredientes}
+          usosPorIngrediente={usosPorIngrediente}
+          aoCriar={acoes.criarIngrediente}
+          aoAtualizarUnidade={acoes.atualizarUnidade}
+          aoRemover={acoes.removerIngrediente}
+        />
+      )}
+
+      {rota === 'receitas' && (
+        <GestaoReceitas
+          key={pratoInicial ?? 'todas'}
+          pratos={dados.pratos}
+          ingredientes={dados.ingredientes}
+          receitas={dados.receitas}
+          receitasPorPrato={dados.receitasPorPrato}
+          aoIncluir={acoes.incluirReceita}
+          aoAlterar={acoes.alterarQuantidadeReceita}
+          aoExcluir={acoes.excluirReceita}
+          irPara={irPara}
+          pratoInicial={pratoInicial}
+        />
+      )}
+
+      {rota === 'despensa' && (
+        <GestaoDespensa
+          itens={dados.despensa}
+          porCategoria={dados.despensaPorCategoria}
+          aoIncluir={acoes.incluirItemDespensa}
+          aoAlterar={acoes.alterarItemDespensa}
+          aoExcluir={acoes.excluirItemDespensa}
+        />
+      )}
     </div>
   );
 }

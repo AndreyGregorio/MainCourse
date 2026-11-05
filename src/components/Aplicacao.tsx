@@ -1,125 +1,66 @@
-import { useCallback, useMemo } from 'react';
-import type { Unidade } from '../types';
-import { useColecao, useOnline } from '../hooks/useColecao';
-import { mapearIngrediente, mapearPrato } from '../lib/mapeadores';
-import * as acoes from '../lib/acoes';
-import { compararNomes, mensagemDeErro } from '../lib/utils';
-import { useToast } from './ui/toast-context';
-import { useConfirm } from './ui/confirm-context';
+import { useRota } from '../hooks/useRota';
+import { useDados } from '../hooks/useDados';
+import { useAcoes } from '../hooks/useAcoes';
+import { useOnline } from '../hooks/useColecao';
+import { Abas } from './Abas';
 import { Cabecalho } from './Cabecalho';
-import { TelaPainel } from './TelaPainel';
 import { Rodape } from './Rodape';
 import { TelaCarregando } from './TelaCarregando';
+import { TelaPainel } from './TelaPainel';
+import { Botao } from './ui/Basicos';
+
+function AvisoBanco({ erro, aoRecarregar }: { erro: string; aoRecarregar: () => void }) {
+  return (
+    <div
+      role="alert"
+      data-testid="aviso-banco"
+      className="mx-auto mb-6 max-w-6xl rounded-xl border border-maincourse-red/30 bg-maincourse-red/5 px-4 py-3 text-sm text-maincourse-navy"
+    >
+      <p className="font-bold text-maincourse-red">O banco de dados não respondeu como esperado</p>
+      <p className="mt-1 leading-relaxed text-maincourse-navy/70">{erro}</p>
+      <p className="mt-1 leading-relaxed text-maincourse-navy/60">
+        Se você acabou de atualizar o projeto, publique o <code>firestore.rules</code> desta release
+        no Firebase Console (Firestore → Regras).
+      </p>
+      <Botao type="button" variante="secundario" className="mt-3" onClick={aoRecarregar}>
+        Tentar de novo
+      </Botao>
+    </div>
+  );
+}
 
 export function Aplicacao() {
-  const { avisar } = useToast();
-  const confirmar = useConfirm();
+  const { rota, parametros, irPara } = useRota();
+  const dados = useDados();
+  const acoes = useAcoes(dados);
   const online = useOnline();
 
-  const colecaoPratos = useColecao('pratos', mapearPrato);
-  const colecaoIngredientes = useColecao('ingredientes', mapearIngrediente);
-
-  const carregando = colecaoPratos.carregando || colecaoIngredientes.carregando;
-  const daCache = colecaoPratos.daCache || colecaoIngredientes.daCache;
-
-  const datasDeAtualizacao = [colecaoPratos.atualizadoEm, colecaoIngredientes.atualizadoEm].filter(
-    (data): data is Date => data instanceof Date,
-  );
-  const atualizadoEm =
-    datasDeAtualizacao.length === 0
-      ? null
-      : new Date(Math.max(...datasDeAtualizacao.map((data) => data.getTime())));
-
-  const pratos = useMemo(
-    () => [...colecaoPratos.dados].sort((a, b) => compararNomes(a.nome, b.nome)),
-    [colecaoPratos.dados],
-  );
-
-  const ingredientes = useMemo(
-    () => [...colecaoIngredientes.dados].sort((a, b) => compararNomes(a.nome, b.nome)),
-    [colecaoIngredientes.dados],
-  );
-
-  const executar = useCallback(
-    async (acao: () => Promise<void>, sucesso?: string): Promise<boolean> => {
-      try {
-        await acao();
-        if (sucesso) avisar(sucesso);
-        return true;
-      } catch (falha) {
-        avisar(mensagemDeErro(falha), 'erro');
-        return false;
-      }
-    },
-    [avisar],
-  );
-
-  const salvarPrato = useCallback(
-    (nome: string, nomeOriginal?: string) =>
-      executar(
-        () => acoes.salvarPrato(nome, nomeOriginal),
-        nomeOriginal ? 'Prato atualizado.' : 'Prato adicionado.',
-      ),
-    [executar],
-  );
-
-  const removerPrato = useCallback(
-    async (nome: string) => {
-      const confirmou = await confirmar({
-        titulo: `Excluir “${nome}”?`,
-        descricao: 'O prato sai do cadastro. Esta ação não pode ser desfeita.',
-        textoConfirmar: 'Excluir prato',
-        perigoso: true,
-      });
-      if (!confirmou) return false;
-      return executar(() => acoes.removerPrato(nome), 'Prato excluído.');
-    },
-    [confirmar, executar],
-  );
-
-  const criarIngrediente = useCallback(
-    (nome: string, unidade: Unidade) =>
-      executar(() => acoes.criarIngrediente(nome, unidade), 'Ingrediente adicionado.'),
-    [executar],
-  );
-
-  const atualizarUnidade = useCallback(
-    (nome: string, unidade: Unidade) =>
-      executar(() => acoes.atualizarUnidadeIngrediente(nome, unidade), 'Unidade atualizada.'),
-    [executar],
-  );
-
-  const removerIngrediente = useCallback(
-    async (nome: string) => {
-      const confirmou = await confirmar({
-        titulo: `Excluir “${nome}”?`,
-        descricao: 'O ingrediente sai do cadastro. Esta ação não pode ser desfeita.',
-        textoConfirmar: 'Excluir ingrediente',
-        perigoso: true,
-      });
-      if (!confirmou) return false;
-      return executar(() => acoes.removerIngrediente(nome), 'Ingrediente excluído.');
-    },
-    [confirmar, executar],
-  );
-
-  if (carregando) {
+  if (dados.carregando) {
     return <TelaCarregando mensagem="Conectando..." />;
   }
 
   return (
     <div className="flex min-h-screen flex-col bg-maincourse-cream">
-      <Cabecalho online={online} daCache={daCache} atualizadoEm={atualizadoEm} />
+      <Cabecalho online={online} daCache={dados.daCache} atualizadoEm={dados.atualizadoEm} />
 
-      <main className="flex-1 px-4 py-8 pb-[max(2rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-10">
+      <Abas
+        rota={rota}
+        contadores={{
+          pratos: dados.pratos.length,
+          ingredientes: dados.ingredientes.length,
+          receitas: dados.receitas.length,
+          despensa: dados.despensa.length,
+        }}
+      />
+
+      <main className="flex-1 px-4 py-6 pb-[max(2rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-8">
+        {dados.erro && <AvisoBanco erro={dados.erro} aoRecarregar={dados.recarregar} />}
         <TelaPainel
-          pratos={pratos}
-          ingredientes={ingredientes}
-          aoSalvarPrato={salvarPrato}
-          aoRemoverPrato={removerPrato}
-          aoCriarIngrediente={criarIngrediente}
-          aoAtualizarUnidade={atualizarUnidade}
-          aoRemoverIngrediente={removerIngrediente}
+          rota={rota}
+          parametros={parametros}
+          irPara={irPara}
+          dados={dados}
+          acoes={acoes}
         />
       </main>
 

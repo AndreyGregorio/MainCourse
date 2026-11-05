@@ -1,8 +1,13 @@
 rules_version = '2';
 
-// Regras do Cloud Firestore — MainCourse (Release 1).
+// Regras do Cloud Firestore — MainCourse (Release 2).
 //
-// A Release 1 usa duas coleções: `pratos` e `ingredientes`.
+// Coleções desta release:
+//   pratos       → { nome }                                        (RFS01–RFS04)
+//   ingredientes → { nome, unidade_medida }                        (RFS05–RFS08)
+//   receitas     → { prato_id, ingrediente_id, quantidade_por_pessoa } (RFS09–RFS12)
+//   despensa     → { nome, categoria, quantidade, unidade_medida, observacao } (RFS13–RFS16)
+//
 // O acesso exige uma sessão (mesmo anônima), criada pelo app em
 // src/firebaseConfig.ts. Sem o provedor "Anônimo" ativo no Firebase
 // Authentication, nada é lido nem gravado.
@@ -12,7 +17,7 @@ rules_version = '2';
 //   2. Cole este arquivo e clique em Publicar.
 //   Ou, com a CLI: firebase deploy --only firestore:rules --project SEU_PROJETO
 //
-// Ao chegar nas releases R02/R03, acrescente as coleções novas aqui.
+// Ao chegar na Release 3, acrescente as coleções `cardapio` e `historico`.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -22,10 +27,26 @@ service cloud.firestore {
     }
 
     // O DRE limita o nome a 60 caracteres e exige preenchimento.
-    function nomeValido() {
-      return request.resource.data.nome is string
-        && request.resource.data.nome.size() >= 2
-        && request.resource.data.nome.size() <= 60;
+    function nomeValido(dados) {
+      return dados.nome is string
+        && dados.nome.size() >= 2
+        && dados.nome.size() <= 60;
+    }
+
+    function quantidadeValida(valor) {
+      return valor is number && valor >= 0 && valor <= 99999;
+    }
+
+    function itemDespensaValido(dados) {
+      return dados.keys().hasOnly([
+          'nome', 'categoria', 'quantidade', 'unidade_medida', 'observacao'
+        ])
+        && nomeValido(dados)
+        && dados.categoria in ['Limpeza', 'Salada', 'Temperos', 'Itens Gerais']
+        && quantidadeValida(dados.quantidade)
+        && dados.unidade_medida in ['kg', 'L', 'un']
+        && (!dados.keys().hasAny(['observacao'])
+          || (dados.observacao is string && dados.observacao.size() <= 120));
     }
 
     // Coleção `pratos` — RFS01 a RFS04.
@@ -33,7 +54,7 @@ service cloud.firestore {
       allow read: if autenticado();
       allow create, update: if autenticado()
         && request.resource.data.keys().hasOnly(['nome'])
-        && nomeValido();
+        && nomeValido(request.resource.data);
       allow delete: if autenticado();
     }
 
@@ -42,8 +63,45 @@ service cloud.firestore {
       allow read: if autenticado();
       allow create, update: if autenticado()
         && request.resource.data.keys().hasOnly(['nome', 'unidade_medida'])
-        && nomeValido()
+        && nomeValido(request.resource.data)
         && request.resource.data.unidade_medida in ['kg', 'L', 'un'];
+      allow delete: if autenticado();
+    }
+
+    // Coleção `receitas` — RFS09 a RFS12.
+    // O id composto (`prato::ingrediente`) já impede repetir o par; a
+    // quantidade é por pessoa e precisa ser maior que zero. Prato e
+    // ingrediente são imutáveis na edição (RFS11).
+    match /receitas/{receitaId} {
+      allow read: if autenticado();
+      allow create: if autenticado()
+        && request.resource.data.keys().hasOnly([
+          'prato_id', 'ingrediente_id', 'quantidade_por_pessoa'
+        ])
+        && request.resource.data.prato_id is string
+        && request.resource.data.ingrediente_id is string
+        && quantidadeValida(request.resource.data.quantidade_por_pessoa)
+        && request.resource.data.quantidade_por_pessoa > 0;
+      allow update: if autenticado()
+        && request.resource.data.keys().hasOnly([
+          'prato_id', 'ingrediente_id', 'quantidade_por_pessoa'
+        ])
+        && request.resource.data.prato_id == resource.data.prato_id
+        && request.resource.data.ingrediente_id == resource.data.ingrediente_id
+        && quantidadeValida(request.resource.data.quantidade_por_pessoa)
+        && request.resource.data.quantidade_por_pessoa > 0;
+      allow delete: if autenticado();
+    }
+
+    // Coleção `despensa` — RFS13 a RFS16.
+    // O nome é imutável depois da inclusão (RFS15); a categoria pode mudar.
+    match /despensa/{itemId} {
+      allow read: if autenticado();
+      allow create: if autenticado()
+        && itemDespensaValido(request.resource.data);
+      allow update: if autenticado()
+        && itemDespensaValido(request.resource.data)
+        && request.resource.data.nome == resource.data.nome;
       allow delete: if autenticado();
     }
 

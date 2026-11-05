@@ -1,6 +1,11 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously } from 'firebase/auth';
 import {
+  connectAuthEmulator,
+  getAuth,
+  signInAnonymously,
+} from 'firebase/auth';
+import {
+  connectFirestoreEmulator,
   initializeFirestore,
   persistentLocalCache,
   persistentMultipleTabManager,
@@ -38,6 +43,20 @@ auth.languageCode = 'pt-BR';
 export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
 });
+
+/**
+ * Modo de desenvolvimento/teste: aponta para os emuladores locais.
+ *
+ * Os testes E2E usam esse modo (`VITE_USE_EMULATOR=true`) para rodar sem tocar
+ * no banco de produção. Em produção a variável não existe e o app fala com o
+ * Firebase configurado nas chaves.
+ */
+export const usandoEmulador = obterEnv('VITE_USE_EMULATOR') === 'true';
+
+if (usandoEmulador) {
+  connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+  connectFirestoreEmulator(db, '127.0.0.1', 8080);
+}
 
 let promessaLogin: Promise<void> | null = null;
 

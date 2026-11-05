@@ -25,7 +25,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const avisar = useCallback((mensagem: string, tipo: TipoToast = 'sucesso') => {
     const id = proximoId.current++;
-    setAvisos((atual) => [...atual, { id, tipo, mensagem }]);
+    // Mantém no máximo três avisos na tela: uma sequência rápida de ações não
+    // esconde o conteúdo por trás de uma pilha de mensagens.
+    setAvisos((atual) => [...atual, { id, tipo, mensagem }].slice(-3));
     window.setTimeout(
       () => setAvisos((atual) => atual.filter((a) => a.id !== id)),
       tipo === 'erro' ? 7000 : 3500,

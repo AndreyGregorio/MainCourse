@@ -45,7 +45,8 @@ Pages a ele. Tempo estimado: **10 a 15 minutos**.
    para usuários no Brasil, é a menor latência.
 5. Clique em **Ativar**.
 
-As coleções ainda não existem: `pratos` e `ingredientes` são criadas no primeiro cadastro do app.
+As coleções ainda não existem: `pratos`, `ingredientes`, `receitas` e `despensa` são criadas no
+primeiro cadastro do app.
 
 ## 3. Registrar o app Web
 
@@ -112,11 +113,17 @@ Se o domínio não estiver autorizado, o login falha com `auth/unauthorized-doma
 As regras desta release:
 
 - exigem usuário autenticado (anônimo serve);
-- permitem apenas as coleções `pratos` e `ingredientes`;
+- permitem apenas as coleções `pratos`, `ingredientes`, `receitas` e `despensa`;
 - validam `nome` (2 a 60 caracteres) e `unidade_medida` (`kg`, `L` ou `un`);
+- validam a quantidade por pessoa da receita (número maior que zero) e impedem trocar prato ou
+  ingrediente na edição (RFS11);
+- validam o item da despensa (categoria da lista fixa, quantidade maior ou igual a zero, observação
+  até 120 caracteres) e impedem trocar o nome na edição (RFS15);
 - negam todo o resto.
 
-Ao chegar na R02/R03, acrescente as novas coleções ao arquivo e publique de novo.
+**Publicar as regras é obrigatório a cada release**: sem elas, as seções novas mostram o aviso de
+banco e não gravam. Ao chegar na R03, acrescente `cardapio` e `historico` ao arquivo e publique de
+novo.
 
 ## 7. Configurar o ambiente local
 
@@ -172,7 +179,7 @@ Depois rode o workflow **Deploy no GitHub Pages** (Actions → Run workflow) ou 
 > vem das regras do Firestore e do domínio autorizado. O que nunca pode ir para o front-end é uma
 > service account ou chave privada.
 
-## Modelo de dados da Release 1
+## Modelo de dados da Release 2
 
 ```text
 pratos/{id}
@@ -181,11 +188,32 @@ pratos/{id}
 ingredientes/{id}
   nome: string
   unidade_medida: "kg" | "L" | "un"
+
+receitas/{prato_id}::{ingrediente_id}
+  prato_id: string
+  ingrediente_id: string
+  quantidade_por_pessoa: number   // > 0
+
+despensa/{categoria}::{nome}
+  nome: string
+  categoria: "Limpeza" | "Salada" | "Temperos" | "Itens Gerais"
+  quantidade: number              // >= 0
+  unidade_medida: "kg" | "L" | "un"
+  observacao: string              // opcional, até 120 caracteres
 ```
 
-O `id` é o nome normalizado (minúsculo, `/` trocado por `-`). O nome é o identificador do registro
-no DRE, então `Lasanha` e `lasanha` apontam para o mesmo documento. O nome exibido é o que o usuário
-digitou.
+O `id` de pratos e ingredientes é o nome normalizado (minúsculo, `/` e `:` trocados por `-`). O nome
+é o identificador do registro no DRE, então `Lasanha` e `lasanha` apontam para o mesmo documento; o
+nome exibido é o que o usuário digitou.
+
+As coleções novas usam **id composto** para garantir a unicidade sem consulta extra:
+
+- `receitas` usa `prato::ingrediente` — o mesmo ingrediente não entra duas vezes no prato (RFS09);
+- `despensa` usa `categoria::nome` — o nome se repete só em categorias diferentes (RFS13).
+
+Como prato, ingrediente e nome do item são imutáveis depois de criados (RFS03, RFS11 e RFS15), a
+chave nunca muda sozinha. Renomear um prato é a exceção: o app recria as receitas com o novo id no
+mesmo lote.
 
 Exemplo:
 
@@ -195,7 +223,36 @@ Exemplo:
 
 // ingredientes/queijo mussarela
 { "nome": "Queijo mussarela", "unidade_medida": "kg" }
+
+// receitas/lasanha à bolonhesa::queijo mussarela
+{
+  "prato_id": "lasanha à bolonhesa",
+  "ingrediente_id": "queijo mussarela",
+  "quantidade_por_pessoa": 0.15
+}
+
+// despensa/limpeza::detergente
+{
+  "nome": "Detergente",
+  "categoria": "Limpeza",
+  "quantidade": 1,
+  "unidade_medida": "un",
+  "observacao": "armário de baixo"
+}
 ```
+
+### Emuladores (testes sem tocar na produção)
+
+O [`firebase.json`](../firebase.json) já configura o Firestore na porta 8080 e o Authentication na
+9099. Para rodar os testes E2E sem gravar no banco real:
+
+```bash
+firebase emulators:start --only firestore,auth --project demo-maincourse
+```
+
+Em outro terminal, com `VITE_USE_EMULATOR=true` no `.env.local`, rode `npm run dev` e aponte os
+testes para o app local. O emulador aplica o mesmo `firestore.rules` do repositório, então as regras
+também são testadas.
 
 ## Limites do plano gratuito (Spark)
 
@@ -243,8 +300,9 @@ O `firebase.json` deste repositório já aponta para `firestore.rules`.
 | `auth/operation-not-allowed` | Login anônimo desligado. | Authentication → Sign-in method → Anônimo. |
 | `auth/unauthorized-domain` | Domínio fora da lista. | Authentication → Settings → Authorized domains. |
 | `permission-denied` | Regras não publicadas ou leitura antes do login. | Publique as regras e recarregue; o app espera a sessão antes de ler. |
-| `failed-precondition` | Falta índice (não deve ocorrer na R01). | Crie o índice indicado no link do erro. |
+| `failed-precondition` | Falta índice (não deve ocorrer na R02: as consultas usam um campo só). | Crie o índice indicado no link do erro. |
 | App abre, mas não grava | Regras antigas ou domínio errado. | Confira as regras publicadas e o console do navegador. |
+| Receitas ou despensa vazias | Regras publicadas ainda são as da R01. | Publique o `firestore.rules` da R02 (seção 6). |
 | `auth/invalid-api-key` | Chave truncada/colada errada. | Revise o secret e o `.env.local`. |
 
 ## Checklist final
@@ -257,4 +315,4 @@ O `firebase.json` deste repositório já aponta para `firestore.rules`.
 - [ ] `.env.local` preenchido e `npm run dev` funcionando
 - [ ] Secrets cadastrados no GitHub
 - [ ] Workflow executado sem erro
-- [ ] App no Pages cadastrando pratos e ingredientes
+- [ ] App no Pages cadastrando pratos, ingredientes, receitas e itens da despensa
