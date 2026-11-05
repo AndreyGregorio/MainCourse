@@ -1,5 +1,12 @@
 /** Rotas da aplicação (hash) e o rótulo de cada seção. */
-export type RotaId = 'inicio' | 'pratos' | 'ingredientes' | 'receitas' | 'despensa';
+export type RotaId =
+  | 'inicio'
+  | 'pratos'
+  | 'ingredientes'
+  | 'receitas'
+  | 'despensa'
+  | 'cardapio'
+  | 'compras';
 
 export type Rota = {
   id: RotaId;
@@ -12,6 +19,8 @@ export const ROTAS: Rota[] = [
   { id: 'ingredientes', rotulo: 'Ingredientes' },
   { id: 'receitas', rotulo: 'Receitas' },
   { id: 'despensa', rotulo: 'Despensa' },
+  { id: 'cardapio', rotulo: 'Cardápio' },
+  { id: 'compras', rotulo: 'Compras' },
 ];
 
 export const ROTA_PADRAO: RotaId = 'inicio';

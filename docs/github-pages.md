@@ -111,23 +111,24 @@ gh release create r01 --title "Release 1 — Pratos e ingredientes" \
   --notes-file docs/releases/r01.md
 ```
 
-Para a **R02** (receitas e despensa):
+Para a **R03** (cardápio e lista de compras):
 
 ```bash
 git add -A
-git commit -m "feat(r02): receitas, despensa e navegação por seções"
-git tag -a r02 -m "Release 2 — Receitas e despensa"
+git commit -m "feat(r03): cardápio da semana e lista de compras"
+git tag -a r03 -m "Release 3 — Cardápio e lista de compras"
 git push origin main
-git push origin r02
-gh release create r02 --title "Release 2 — Receitas e despensa" \
-  --notes-file docs/releases/r02.md
+git push origin r03
+gh release create r03 --title "Release 3 — Cardápio e lista de compras" \
+  --notes-file docs/releases/r03.md
 ```
 
 Antes do push, confirme que o `firestore.rules` desta release foi publicado no Firebase
 (Firestore → Regras). O deploy do Pages não publica regras.
 
-As notas ficam em [`docs/releases/r01.md`](releases/r01.md) e
-[`docs/releases/r02.md`](releases/r02.md), no formato de release notes.
+As notas ficam em [`docs/releases/r01.md`](releases/r01.md),
+[`docs/releases/r02.md`](releases/r02.md) e [`docs/releases/r03.md`](releases/r03.md), no formato de
+release notes.
 
 ## 9. Domínio próprio (opcional)
 
@@ -163,6 +164,7 @@ visitante para a raiz.
 | `Resource not accessible by integration` | Faltam permissões no workflow. | Confira o bloco `permissions` (`pages: write`, `id-token: write`). |
 | `npm ci` falha | `package-lock.json` desatualizado. | Rode `npm install`, commit o lock e envie. |
 | Build passa, site em branco | Falta de secrets ou erro de JS. | Abra o console; veja os logs do build e confira as variáveis. |
+| Deploy verde, mas site antigo | Pages ainda em **Deploy from a branch** ou novo deploy do **mesmo commit**. | Em **Settings → Pages**, use **GitHub Actions**; faça um commit novo (o Pages pode ignorar um redeploy do mesmo SHA). |
 | 404 ao atualizar uma rota | O app não usa router; só a raiz existe. | Use a URL raiz. O `404.html` redireciona. |
 | Login falha no Pages | Domínio não autorizado. | Adicione `andreygregorio.github.io` no Firebase Authentication. |
 | CSS/JS 404 | Base errada. | Use o workflow; confira `VITE_BASE` nos logs. |
@@ -176,6 +178,6 @@ visitante para a raiz.
 - [ ] Workflow verde
 - [ ] `https://andreygregorio.github.io/MainCourse/` abre o app
 - [ ] Domínio autorizado no Firebase
-- [ ] Tag `r02` e GitHub Release criadas
-- [ ] Regras do Firestore da R02 publicadas
-- [ ] Cadastro de prato, ingrediente, receita e item da despensa testado no site publicado
+- [ ] Tag `r03` e GitHub Release criadas
+- [ ] Regras do Firestore da R03 publicadas
+- [ ] Cardápio da semana e lista de compras testados no site publicado

@@ -1,7 +1,7 @@
 {
   "name": "MainCourse — Cardápio, compras e despensa",
   "short_name": "MainCourse",
-  "description": "Pratos, ingredientes e, nas próximas releases, cardápio da semana, lista de compras e despensa.",
+  "description": "Pratos, ingredientes, receitas, cardápio da semana, lista de compras e despensa.",
   "lang": "pt-BR",
   "start_url": ".",
   "scope": ".",

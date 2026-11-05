@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Prato } from '../../types';
-import { LIMITE_NOME } from '../../lib/constants';
+import { LIMITE_NOME, LIMITE_PORCOES, PORCOES_PADRAO } from '../../lib/constants';
 import { normalizar, pluralizar } from '../../lib/utils';
 import { Botao, Campo, Entrada, EstadoVazio, SecaoCard, Selo } from '../ui/Basicos';
 import { IconeEditar, IconeExcluir, IconePrato, IconeReceita } from '../ui/Icones';
@@ -9,7 +9,7 @@ import { IconeEditar, IconeExcluir, IconePrato, IconeReceita } from '../ui/Icone
 type Props = {
   pratos: Prato[];
   receitasPorPrato: Map<string, number>;
-  aoSalvar: (nome: string, nomeOriginal?: string) => Promise<boolean>;
+  aoSalvar: (nome: string, porcoesBase: number, nomeOriginal?: string) => Promise<boolean>;
   aoRemover: (nome: string) => Promise<boolean>;
   aoAbrirReceitas: (pratoId: string) => void;
 };
@@ -22,6 +22,7 @@ export function GestaoPratos({
   aoAbrirReceitas,
 }: Props) {
   const [nome, setNome] = useState('');
+  const [porcoes, setPorcoes] = useState(String(PORCOES_PADRAO));
   const [editando, setEditando] = useState<Prato | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [busca, setBusca] = useState('');
@@ -36,6 +37,7 @@ export function GestaoPratos({
 
   function limpar() {
     setNome('');
+    setPorcoes(String(PORCOES_PADRAO));
     setEditando(null);
   }
 
@@ -44,8 +46,11 @@ export function GestaoPratos({
     const nomeLimpo = nome.trim();
     if (!nomeLimpo) return;
 
+    const rendimento = Number(porcoes);
+    if (!Number.isInteger(rendimento) || rendimento < 1 || rendimento > LIMITE_PORCOES) return;
+
     setSalvando(true);
-    const salvou = await aoSalvar(nomeLimpo, editando?.nome);
+    const salvou = await aoSalvar(nomeLimpo, rendimento, editando?.nome);
     setSalvando(false);
     if (salvou) limpar();
   }
@@ -76,6 +81,9 @@ export function GestaoPratos({
         </div>
         <p className="mb-4 text-sm leading-relaxed text-maincourse-navy/55">
           O nome identifica o prato e não pode repetir (maiúsculas e minúsculas não diferenciam).
+          O <strong className="font-semibold text-maincourse-navy/70">rendimento</strong> é quantas
+          porções a receita inteira serve (ex.: 8 para uma travessa de lasanha); com 1, as
+          quantidades da receita valem por pessoa.
         </p>
 
         <form
@@ -97,6 +105,20 @@ export function GestaoPratos({
               maxLength={LIMITE_NOME}
               autoComplete="off"
               data-testid="prato-nome"
+            />
+          </Campo>
+          <Campo rotulo="Rende (porções)" className="sm:w-40">
+            <Entrada
+              required
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={LIMITE_PORCOES}
+              step={1}
+              value={porcoes}
+              onChange={(evento) => setPorcoes(evento.target.value)}
+              aria-label="Quantas porções a receita do prato rende"
+              data-testid="prato-porcoes"
             />
           </Campo>
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -161,6 +183,14 @@ export function GestaoPratos({
                     <span className="min-w-0 flex-1 font-semibold text-maincourse-navy">
                       {prato.nome}
                     </span>
+                    {prato.porcoes_base > 1 && (
+                      <span
+                        className="text-xs font-semibold text-maincourse-navy/45"
+                        data-testid="prato-porcoes-valor"
+                      >
+                        rende {pluralizar(prato.porcoes_base, 'porção', 'porções')}
+                      </span>
+                    )}
                     <span data-testid="prato-receita-selo">
                       <Selo tom={receitas > 0 ? 'gold' : 'cinza'}>
                         {receitas > 0
@@ -184,6 +214,7 @@ export function GestaoPratos({
                         onClick={() => {
                           setEditando(prato);
                           setNome(prato.nome);
+                          setPorcoes(String(prato.porcoes_base));
                         }}
                         className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-bold text-maincourse-navy transition hover:bg-white"
                         aria-label={`Editar ${prato.nome}`}

@@ -45,8 +45,8 @@ Pages a ele. Tempo estimado: **10 a 15 minutos**.
    para usuários no Brasil, é a menor latência.
 5. Clique em **Ativar**.
 
-As coleções ainda não existem: `pratos`, `ingredientes`, `receitas` e `despensa` são criadas no
-primeiro cadastro do app.
+As coleções ainda não existem: `pratos`, `ingredientes`, `receitas`, `despensa`, `cardapio` e
+`compras` são criadas no primeiro cadastro do app.
 
 ## 3. Registrar o app Web
 
@@ -113,17 +113,23 @@ Se o domínio não estiver autorizado, o login falha com `auth/unauthorized-doma
 As regras desta release:
 
 - exigem usuário autenticado (anônimo serve);
-- permitem apenas as coleções `pratos`, `ingredientes`, `receitas` e `despensa`;
-- validam `nome` (2 a 60 caracteres) e `unidade_medida` (`kg`, `L` ou `un`);
-- validam a quantidade por pessoa da receita (número maior que zero) e impedem trocar prato ou
+- permitem apenas as coleções `pratos`, `ingredientes`, `receitas`, `despensa`, `cardapio` e
+  `compras`;
+- validam `nome` (2 a 60 caracteres), `unidade_medida` (`kg`, `L` ou `un`), o rendimento do prato
+  (`porcoes_base` inteiro de 1 a 99) e a embalagem opcional (rótulo de 1 a 40 caracteres e
+  quantidade maior que zero);
+- validam a quantidade da receita inteira (número maior que zero) e impedem trocar prato ou
   ingrediente na edição (RFS11);
 - validam o item da despensa (categoria da lista fixa, quantidade maior ou igual a zero, observação
   até 120 caracteres) e impedem trocar o nome na edição (RFS15);
+- validam o dia do cardápio (segunda a sexta, prato de referência e pessoas de 1 a 99) e impedem
+  trocar o dia na edição (RFS19);
+- aceitam a marcação de compra `compras/{ingrediente}` com `ingrediente_id` e `marcado_em`;
 - negam todo o resto.
 
 **Publicar as regras é obrigatório a cada release**: sem elas, as seções novas mostram o aviso de
-banco e não gravam. Ao chegar na R03, acrescente `cardapio` e `historico` ao arquivo e publique de
-novo.
+banco e não gravam. A SM-01 acrescenta `porcoes_base` e `embalagem`; publique o app novo **antes**
+das regras, porque a versão anterior grava campos que as regras novas recusam.
 
 ## 7. Configurar o ambiente local
 
@@ -179,20 +185,25 @@ Depois rode o workflow **Deploy no GitHub Pages** (Actions → Run workflow) ou 
 > vem das regras do Firestore e do domínio autorizado. O que nunca pode ir para o front-end é uma
 > service account ou chave privada.
 
-## Modelo de dados da Release 2
+## Modelo de dados da Release 3 + SM-01
 
 ```text
 pratos/{id}
   nome: string
+  porcoes_base: number            // inteiro >= 1; rendimento da receita (SM-01)
 
 ingredientes/{id}
   nome: string
   unidade_medida: "kg" | "L" | "un"
+  embalagem: {                    // opcional (SM-01)
+    rotulo: string                // ex.: "pacote 500 g"
+    quantidade: number            // > 0, na unidade do ingrediente (0.5 para 500 g)
+  } | null
 
 receitas/{prato_id}::{ingrediente_id}
   prato_id: string
   ingrediente_id: string
-  quantidade_por_pessoa: number   // > 0
+  quantidade: number              // > 0, para a receita inteira (porcoes_base porções)
 
 despensa/{categoria}::{nome}
   nome: string
@@ -200,6 +211,15 @@ despensa/{categoria}::{nome}
   quantidade: number              // >= 0
   unidade_medida: "kg" | "L" | "un"
   observacao: string              // opcional, até 120 caracteres
+
+cardapio/{dia}
+  dia: "Segunda" | "Terça" | "Quarta" | "Quinta" | "Sexta"
+  prato_id: string
+  pessoas: number                 // inteiro >= 1
+
+compras/{ingrediente_id}
+  ingrediente_id: string
+  marcado_em: timestamp
 ```
 
 O `id` de pratos e ingredientes é o nome normalizado (minúsculo, `/` e `:` trocados por `-`). O nome
@@ -211,24 +231,37 @@ As coleções novas usam **id composto** para garantir a unicidade sem consulta 
 - `receitas` usa `prato::ingrediente` — o mesmo ingrediente não entra duas vezes no prato (RFS09);
 - `despensa` usa `categoria::nome` — o nome se repete só em categorias diferentes (RFS13).
 
+O `cardapio` usa o **dia normalizado como id** (`segunda`, `terca`…), o que garante um único
+registro por dia sem consulta extra (RFS17). O dia é imutável (RFS19); prato e pessoas podem mudar.
+
+**Compatibilidade com dados da R03:** prato sem `porcoes_base` é lido como 1 (quantidade por
+pessoa) e receita com `quantidade_por_pessoa` é lida como `quantidade`. Na primeira edição de uma
+receita antiga, o app grava `quantidade` e apaga o campo antigo — não é preciso migrar nada à mão.
+Publique o app novo e, em seguida, o `firestore.rules` desta versão: a versão antiga do app grava
+campos que as regras novas não aceitam.
+
 Como prato, ingrediente e nome do item são imutáveis depois de criados (RFS03, RFS11 e RFS15), a
-chave nunca muda sozinha. Renomear um prato é a exceção: o app recria as receitas com o novo id no
-mesmo lote.
+chave nunca muda sozinha. Renomear um prato é a exceção: o app recria as receitas com o novo id e
+atualiza o `prato_id` dos dias do cardápio no mesmo lote (RFS03).
 
 Exemplo:
 
 ```json
 // pratos/lasanha à bolonhesa
-{ "nome": "Lasanha à bolonhesa" }
+{ "nome": "Lasanha à bolonhesa", "porcoes_base": 8 }
 
 // ingredientes/queijo mussarela
-{ "nome": "Queijo mussarela", "unidade_medida": "kg" }
+{
+  "nome": "Queijo mussarela",
+  "unidade_medida": "kg",
+  "embalagem": { "rotulo": "pacote 500 g", "quantidade": 0.5 }
+}
 
 // receitas/lasanha à bolonhesa::queijo mussarela
 {
   "prato_id": "lasanha à bolonhesa",
   "ingrediente_id": "queijo mussarela",
-  "quantidade_por_pessoa": 0.15
+  "quantidade": 0.4
 }
 
 // despensa/limpeza::detergente
@@ -239,12 +272,31 @@ Exemplo:
   "unidade_medida": "un",
   "observacao": "armário de baixo"
 }
+
+// cardapio/segunda
+{
+  "dia": "Segunda",
+  "prato_id": "lasanha à bolonhesa",
+  "pessoas": 2
+}
+
+// compras/queijo mussarela
+{
+  "ingrediente_id": "queijo mussarela",
+  "marcado_em": "2026-11-12T18:30:00Z"
+}
 ```
+
+A lista de compras **não é uma coleção**: ela é calculada no navegador a partir do cardápio e das
+receitas (RF01/RF02). Só a marcação de comprado fica no Firestore, para acompanhar o usuário entre
+aparelhos e ser removida junto com o ingrediente (RFS08).
 
 ### Emuladores (testes sem tocar na produção)
 
 O [`firebase.json`](../firebase.json) já configura o Firestore na porta 8080 e o Authentication na
-9099. Para rodar os testes E2E sem gravar no banco real:
+9099.
+
+Para rodar os testes E2E sem gravar no banco real:
 
 ```bash
 firebase emulators:start --only firestore,auth --project demo-maincourse
@@ -300,9 +352,9 @@ O `firebase.json` deste repositório já aponta para `firestore.rules`.
 | `auth/operation-not-allowed` | Login anônimo desligado. | Authentication → Sign-in method → Anônimo. |
 | `auth/unauthorized-domain` | Domínio fora da lista. | Authentication → Settings → Authorized domains. |
 | `permission-denied` | Regras não publicadas ou leitura antes do login. | Publique as regras e recarregue; o app espera a sessão antes de ler. |
-| `failed-precondition` | Falta índice (não deve ocorrer na R02: as consultas usam um campo só). | Crie o índice indicado no link do erro. |
+| `failed-precondition` | Falta índice (não deve ocorrer na R03: as consultas usam um campo só). | Crie o índice indicado no link do erro. |
 | App abre, mas não grava | Regras antigas ou domínio errado. | Confira as regras publicadas e o console do navegador. |
-| Receitas ou despensa vazias | Regras publicadas ainda são as da R01. | Publique o `firestore.rules` da R02 (seção 6). |
+| Cardápio ou compras vazios | Regras publicadas ainda são as da R02 (sem `cardapio`/`compras`). | Publique o `firestore.rules` da R03 (seção 6). |
 | `auth/invalid-api-key` | Chave truncada/colada errada. | Revise o secret e o `.env.local`. |
 
 ## Checklist final
@@ -315,4 +367,5 @@ O `firebase.json` deste repositório já aponta para `firestore.rules`.
 - [ ] `.env.local` preenchido e `npm run dev` funcionando
 - [ ] Secrets cadastrados no GitHub
 - [ ] Workflow executado sem erro
-- [ ] App no Pages cadastrando pratos, ingredientes, receitas e itens da despensa
+- [ ] App no Pages cadastrando pratos, ingredientes, receitas, itens da despensa e dias do cardápio
+- [ ] Lista de compras calculada a partir do cardápio e marcações de compra funcionando

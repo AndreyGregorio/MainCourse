@@ -1,5 +1,12 @@
 import { useCallback } from 'react';
-import type { ItemDespensa, ReceitaDetalhada, Unidade } from '../types';
+import type {
+  DiaCardapio,
+  DiaSemana,
+  Embalagem,
+  ItemDespensa,
+  ReceitaDetalhada,
+  Unidade,
+} from '../types';
 import * as acoes from '../lib/acoes';
 import type { DadosItemDespensa } from '../lib/acoes';
 import { idSeguro, listarNomes, mensagemDeErro, pluralizar } from '../lib/utils';
@@ -8,21 +15,34 @@ import { useToast } from '../components/ui/toast-context';
 import type { Dados } from './useDados';
 
 export type Acoes = {
-  salvarPrato: (nome: string, nomeOriginal?: string) => Promise<boolean>;
+  salvarPrato: (nome: string, porcoesBase: number, nomeOriginal?: string) => Promise<boolean>;
   removerPrato: (nome: string) => Promise<boolean>;
-  criarIngrediente: (nome: string, unidade: Unidade) => Promise<boolean>;
-  atualizarUnidade: (nome: string, unidade: Unidade) => Promise<boolean>;
+  criarIngrediente: (
+    nome: string,
+    unidade: Unidade,
+    embalagem: Embalagem | null,
+  ) => Promise<boolean>;
+  atualizarIngrediente: (
+    nome: string,
+    unidade: Unidade,
+    embalagem: Embalagem | null,
+  ) => Promise<boolean>;
   removerIngrediente: (nome: string) => Promise<boolean>;
   incluirReceita: (
     pratoId: string,
     ingredienteId: string,
-    quantidadePorPessoa: number,
+    quantidade: number,
   ) => Promise<boolean>;
   alterarQuantidadeReceita: (receitaId: string, quantidade: number) => Promise<boolean>;
   excluirReceita: (receita: ReceitaDetalhada) => Promise<boolean>;
   incluirItemDespensa: (nome: string, dados: DadosItemDespensa) => Promise<boolean>;
   alterarItemDespensa: (item: ItemDespensa, dados: DadosItemDespensa) => Promise<boolean>;
   excluirItemDespensa: (item: ItemDespensa) => Promise<boolean>;
+  incluirDia: (dia: DiaSemana, pratoId: string, pessoas: number) => Promise<boolean>;
+  alterarDia: (registro: DiaCardapio, pratoId: string, pessoas: number) => Promise<boolean>;
+  excluirDia: (registro: DiaCardapio) => Promise<boolean>;
+  marcarComprado: (ingredienteId: string, comprado: boolean) => Promise<boolean>;
+  limparMarcacoes: () => Promise<boolean>;
 };
 
 /**
@@ -59,22 +79,45 @@ export function useAcoes(dados: Dados): Acoes {
   );
 
   const salvarPrato = useCallback(
-    (nome: string, nomeOriginal?: string) => {
-      const receitas = nomeOriginal
-        ? (dados.receitasPorPrato.get(idSeguro(nomeOriginal))?.length ?? 0)
-        : 0;
+    (nome: string, porcoesBase: number, nomeOriginal?: string) => {
+      // Só há migração de vínculos quando o nome (que é o id) muda; editar só o
+      // rendimento do prato não toca receitas nem cardápio (SM-01).
+      const renomeou = Boolean(nomeOriginal) && idSeguro(nomeOriginal!) !== idSeguro(nome);
+      const receitas =
+        renomeou && nomeOriginal
+          ? (dados.receitasPorPrato.get(idSeguro(nomeOriginal))?.length ?? 0)
+          : 0;
+      const dias =
+        renomeou && nomeOriginal
+          ? (dados.diasPorPrato.get(idSeguro(nomeOriginal))?.length ?? 0)
+          : 0;
+      const partes: string[] = [];
+      if (receitas > 0) partes.push(pluralizar(receitas, 'receita atualizada', 'receitas atualizadas'));
+      if (dias > 0) {
+        partes.push(pluralizar(dias, 'dia do cardápio atualizado', 'dias do cardápio atualizados'));
+      }
       const mensagem = !nomeOriginal
         ? 'Prato adicionado.'
-        : receitas > 0
-          ? `Prato renomeado e ${pluralizar(receitas, 'receita atualizada', 'receitas atualizadas')}.`
-          : 'Prato atualizado.';
-      return executar(() => acoes.salvarPrato(nome, nomeOriginal), mensagem);
+        : !renomeou
+          ? 'Prato atualizado.'
+          : partes.length > 0
+            ? `Prato renomeado; ${partes.join(' e ')}.`
+            : 'Prato renomeado.';
+      return executar(() => acoes.salvarPrato(nome, porcoesBase, nomeOriginal), mensagem);
     },
-    [dados.receitasPorPrato, executar],
+    [dados.diasPorPrato, dados.receitasPorPrato, executar],
   );
 
   const removerPrato = useCallback(
     async (nome: string) => {
+      const dias = dados.diasPorPrato.get(idSeguro(nome)) ?? [];
+      if (dias.length > 0) {
+        return informarBloqueio(
+          `“${nome}” está no cardápio de ${listarNomes(dias)}. Remova ` +
+            `${dias.length === 1 ? 'esse dia' : 'esses dias'} antes de excluir o prato.`,
+        );
+      }
+
       const receitas = dados.receitasPorPrato.get(idSeguro(nome))?.length ?? 0;
       const confirmou = await confirmar({
         titulo: `Excluir “${nome}”?`,
@@ -88,29 +131,35 @@ export function useAcoes(dados: Dados): Acoes {
       if (!confirmou) return false;
       return executar(() => acoes.removerPrato(nome), 'Prato excluído.');
     },
-    [confirmar, dados.receitasPorPrato, executar],
+    [confirmar, dados.diasPorPrato, dados.receitasPorPrato, executar, informarBloqueio],
   );
 
   const criarIngrediente = useCallback(
-    (nome: string, unidade: Unidade) =>
-      executar(() => acoes.criarIngrediente(nome, unidade), 'Ingrediente adicionado.'),
+    (nome: string, unidade: Unidade, embalagem: Embalagem | null) =>
+      executar(
+        () => acoes.criarIngrediente(nome, unidade, embalagem),
+        'Ingrediente adicionado.',
+      ),
     [executar],
   );
 
-  const atualizarUnidade = useCallback(
-    (nome: string, unidade: Unidade) => {
+  const atualizarIngrediente = useCallback(
+    (nome: string, unidade: Unidade, embalagem: Embalagem | null) => {
       const itensDespensa = dados.despensa.filter(
         (item) => idSeguro(item.nome) === idSeguro(nome),
       ).length;
       const mensagem =
         itensDespensa > 0
-          ? `Unidade atualizada no ingrediente e em ${pluralizar(
+          ? `Ingrediente atualizado; a unidade vale também para ${pluralizar(
               itensDespensa,
               'item',
               'itens',
             )} da despensa.`
-          : 'Unidade atualizada.';
-      return executar(() => acoes.atualizarUnidadeIngrediente(nome, unidade), mensagem);
+          : 'Ingrediente atualizado.';
+      return executar(
+        () => acoes.atualizarIngrediente(nome, unidade, embalagem),
+        mensagem,
+      );
     },
     [dados.despensa, executar],
   );
@@ -138,10 +187,10 @@ export function useAcoes(dados: Dados): Acoes {
   );
 
   const incluirReceita = useCallback(
-    (pratoId: string, ingredienteId: string, quantidadePorPessoa: number) => {
+    (pratoId: string, ingredienteId: string, quantidade: number) => {
       const prato = dados.pratosPorId.get(pratoId)?.nome ?? 'prato';
       return executar(
-        () => acoes.incluirReceita(pratoId, ingredienteId, quantidadePorPessoa),
+        () => acoes.incluirReceita(pratoId, ingredienteId, quantidade),
         `Ingrediente adicionado à receita de “${prato}”.`,
       );
     },
@@ -152,7 +201,7 @@ export function useAcoes(dados: Dados): Acoes {
     (receitaId: string, quantidade: number) =>
       executar(
         () => acoes.alterarQuantidadeReceita(receitaId, quantidade),
-        'Quantidade por pessoa atualizada.',
+        'Quantidade da receita atualizada.',
       ),
     [executar],
   );
@@ -200,11 +249,76 @@ export function useAcoes(dados: Dados): Acoes {
     [confirmar, executar],
   );
 
+  const incluirDia = useCallback(
+    (dia: DiaSemana, pratoId: string, pessoas: number) => {
+      const prato = dados.pratosPorId.get(pratoId)?.nome ?? 'prato';
+      return executar(
+        () => acoes.incluirDia(dia, pratoId, pessoas),
+        `${dia} no cardápio com “${prato}” para ${pluralizar(pessoas, 'pessoa', 'pessoas')}.`,
+      );
+    },
+    [dados.pratosPorId, executar],
+  );
+
+  const alterarDia = useCallback(
+    (registro: DiaCardapio, pratoId: string, pessoas: number) => {
+      const prato = dados.pratosPorId.get(pratoId)?.nome ?? 'prato';
+      return executar(
+        () => acoes.alterarDia(registro, pratoId, pessoas),
+        `${registro.dia} atualizado: “${prato}” para ${pluralizar(pessoas, 'pessoa', 'pessoas')}.`,
+      );
+    },
+    [dados.pratosPorId, executar],
+  );
+
+  const excluirDia = useCallback(
+    async (registro: DiaCardapio) => {
+      const prato = dados.pratosPorId.get(registro.prato_id)?.nome ?? 'o prato';
+      const confirmou = await confirmar({
+        titulo: `Remover ${registro.dia.toLowerCase()} do cardápio?`,
+        descricao: `“${prato}” sai do cardápio e os ingredientes desse dia saem da lista de compras. O prato e a receita continuam cadastrados.`,
+        textoConfirmar: 'Remover dia',
+        perigoso: true,
+      });
+      if (!confirmou) return false;
+      return executar(() => acoes.excluirDia(registro.id), `${registro.dia} removido do cardápio.`);
+    },
+    [confirmar, dados.pratosPorId, executar],
+  );
+
+  const marcarComprado = useCallback(
+    async (ingredienteId: string, comprado: boolean): Promise<boolean> => {
+      try {
+        await acoes.marcarComprado(ingredienteId, comprado);
+        return true;
+      } catch (falha) {
+        avisar(mensagemDeErro(falha), 'erro');
+        return false;
+      }
+    },
+    [avisar],
+  );
+
+  const limparMarcacoes = useCallback(async () => {
+    const total = dados.comprados.size;
+    if (total === 0) return true;
+
+    const confirmou = await confirmar({
+      titulo: 'Limpar as marcações de compra?',
+      descricao: `Os ${total} itens marcados como comprados voltam a ficar pendentes. A lista em si não muda.`,
+      textoConfirmar: 'Limpar marcações',
+    });
+    if (!confirmou) return false;
+
+    const mensagem = pluralizar(total, 'marcação de compra limpa', 'marcações de compra limpas');
+    return executar(() => acoes.limparMarcacoes([...dados.comprados]), mensagem + '.');
+  }, [confirmar, dados.comprados, executar]);
+
   return {
     salvarPrato,
     removerPrato,
     criarIngrediente,
-    atualizarUnidade,
+    atualizarIngrediente,
     removerIngrediente,
     incluirReceita,
     alterarQuantidadeReceita,
@@ -212,5 +326,10 @@ export function useAcoes(dados: Dados): Acoes {
     incluirItemDespensa,
     alterarItemDespensa,
     excluirItemDespensa,
+    incluirDia,
+    alterarDia,
+    excluirDia,
+    marcarComprado,
+    limparMarcacoes,
   };
 }

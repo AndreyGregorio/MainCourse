@@ -4,6 +4,73 @@ Todas as mudanças relevantes do MainCourse. O formato segue
 [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o versionamento é por release do
 projeto (`r01`, `r02`, ...).
 
+## [0.4.0] — em andamento — SM-01 (R04)
+
+### Adicionado
+
+- **Rendimento do prato** (`porcoes_base`): a receita pode ser informada pela receita inteira
+  ("0,5 kg de massa para 8 porções") em vez de só por pessoa — SM-01.
+- **Modo de quantidade** no formulário de receitas: *Por pessoa* ou *Receita inteira*; a conversão
+  para o rendimento do prato é feita pelo app.
+- **Embalagem de compra** no ingrediente (rótulo + quantidade na unidade), opcional, e o
+  arredondamento da compra para embalagens inteiras na lista: "comprar 2 × pacote 500 g (1 kg)".
+- Texto para compartilhar e CSV com a informação de compra por embalagem (coluna `Comprar`).
+- Testes E2E CT23 a CT25 em `tests/selenium/test_sm01.py` e helpers de rendimento/embalagem em
+  `apoio.py`.
+
+### Alterado
+
+- `receitas.quantidade_por_pessoa` passou a `receitas.quantidade` (quantidade da receita inteira).
+  A leitura aceita o campo antigo; a primeira edição grava o novo e apaga o antigo.
+- Pratos e ingredientes ganharam campos novos, validados no `firestore.rules`
+  (`porcoes_base` inteiro de 1 a 99 e `embalagem` com rótulo de até 40 caracteres e quantidade > 0).
+- Editar um prato permite ajustar o rendimento sem migrar receitas nem cardápio; a migração em lote
+  continua acontecendo só quando o nome (o id) muda.
+- Documentação da mudança em `docs/releases/sm-01-rendimento-embalagem.md` e README/firebase.md
+  atualizados.
+
+### Notas
+
+- Publicar o app novo **antes** do `firestore.rules`: a versão anterior do app grava campos que as
+  regras novas recusam.
+- O DRE continua sendo a fonte dos requisitos; a SM-01 entra como mudança rastreável da R04, com
+  impacto declarado em RFS01, RFS03, RFS05, RFS07, RFS09, RFS11 e RF01.
+
+## [0.3.0] — 2026-11-12 — Release 3
+
+### Adicionado
+
+- Cardápio da semana: um prato com receita e o número de pessoas por dia, de segunda a sexta, com
+  filtro por dia e a lista de ingredientes de cada dia — RFS17 a RFS20.
+- Lista de compras calculada a partir do cardápio e das receitas, com quantidade total por
+  ingrediente, unidade, dias e pratos — RF01.
+- Filtro da lista por dia da semana e quantidades recalculadas para o período escolhido.
+- Marcação de itens já comprados, progresso, limpeza das marcações e resumo por unidade (`kg`, `L`
+  e `un`) com total de itens e de comprados — RF01 e RF02.
+- Texto pronto para compartilhar e exportação em CSV da lista.
+- Coleções `cardapio` (um documento por dia) e `compras` (uma marcação por ingrediente), com regras
+  do Firestore validando dia, pessoas, referência e timestamp.
+- Navegação para **Cardápio** e **Compras** e painel com seis contadores.
+- Testes E2E CT17 a CT22 em `tests/selenium/test_r03.py` e helpers de cardápio/compras em
+  `apoio.py`.
+
+### Alterado
+
+- Renomear um prato passa a migrar também os dias do cardápio no mesmo lote (RFS03).
+- Excluir um prato usado no cardápio é bloqueado com a lista dos dias (RFS04).
+- Excluir um ingrediente remove a marcação de compra dele junto (RFS08).
+- Excluir ou alterar uma receita recalcula a lista de compras automaticamente (RFS11/RFS12).
+- O modo emulador aceita portas configuráveis por `VITE_EMULATOR_FIRESTORE_PORT` e
+  `VITE_EMULATOR_AUTH_PORT`, útil quando a 8080/9099 já está em uso.
+- Documentação da release, guias do Firebase/Pages e README atualizados para a R03.
+
+### Notas
+
+- Publicar o `firestore.rules` desta release é obrigatório para Cardápio e Compras funcionarem.
+- O RF02 estava previsto no Plano de Projeto para a R04, mas o cronograma aprovado o coloca na R03;
+  ele foi entregue junto com a lista.
+- A R04 fica para homologação, manual do usuário e termo de aceite.
+
 ## [0.2.0] — 2026-11-05 — Release 2
 
 ### Adicionado

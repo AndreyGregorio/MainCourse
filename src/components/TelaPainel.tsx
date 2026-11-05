@@ -9,6 +9,8 @@ import { GestaoPratos } from './painel/GestaoPratos';
 import { GestaoIngredientes } from './painel/GestaoIngredientes';
 import { GestaoReceitas } from './painel/GestaoReceitas';
 import { GestaoDespensa } from './painel/GestaoDespensa';
+import { GestaoCardapio } from './painel/GestaoCardapio';
+import { ListaCompras } from './painel/ListaCompras';
 
 type Props = {
   rota: RotaId;
@@ -67,7 +69,7 @@ export function TelaPainel({ rota, parametros, irPara, dados, acoes }: Props) {
           ingredientes={dados.ingredientes}
           usosPorIngrediente={usosPorIngrediente}
           aoCriar={acoes.criarIngrediente}
-          aoAtualizarUnidade={acoes.atualizarUnidade}
+          aoAtualizar={acoes.atualizarIngrediente}
           aoRemover={acoes.removerIngrediente}
         />
       )}
@@ -94,6 +96,33 @@ export function TelaPainel({ rota, parametros, irPara, dados, acoes }: Props) {
           aoIncluir={acoes.incluirItemDespensa}
           aoAlterar={acoes.alterarItemDespensa}
           aoExcluir={acoes.excluirItemDespensa}
+        />
+      )}
+
+      {rota === 'cardapio' && (
+        <GestaoCardapio
+          cardapio={dados.cardapio}
+          cardapioPorDia={dados.cardapioPorDia}
+          pratos={dados.pratos}
+          pratosComReceita={dados.pratosComReceita}
+          receitasPorPrato={dados.receitasPorPrato}
+          aoIncluir={acoes.incluirDia}
+          aoAlterar={acoes.alterarDia}
+          aoExcluir={acoes.excluirDia}
+          irPara={irPara}
+        />
+      )}
+
+      {rota === 'compras' && (
+        <ListaCompras
+          cardapio={dados.cardapio}
+          pratos={dados.pratos}
+          ingredientes={dados.ingredientes}
+          receitas={dados.receitas}
+          comprados={dados.comprados}
+          aoMarcarComprado={acoes.marcarComprado}
+          aoLimparMarcacoes={acoes.limparMarcacoes}
+          irPara={irPara}
         />
       )}
     </div>

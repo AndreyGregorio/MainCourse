@@ -22,6 +22,8 @@ ABAS = {
     "ingredientes": "Ingredientes",
     "receitas": "Receitas",
     "despensa": "Despensa",
+    "cardapio": "Cardápio",
+    "compras": "Lista de compras",
 }
 
 
@@ -109,31 +111,55 @@ def existe(driver, css):
 
 def esperar_campo_vazio(driver, testid):
     """Espera o formulário limpar depois de salvar (evita corrida com a gravação)."""
+    esperar_campo_valor(driver, testid, "")
+
+
+def esperar_campo_valor(driver, testid, valor):
+    """Espera o campo assumir um valor (evita corrida com a gravação)."""
     seletor = f'[data-testid="{testid}"]'
     WebDriverWait(driver, TIMEOUT).until(
-        lambda navegador: navegador.find_element(By.CSS_SELECTOR, seletor).get_attribute("value") == ""
+        lambda navegador: navegador.find_element(By.CSS_SELECTOR, seletor).get_attribute("value")
+        == valor
     )
 
 
-def criar_prato(driver, nome):
+def criar_prato(driver, nome, porcoes=None):
+    """Cria um prato; `porcoes` é o rendimento da receita (SM-01, padrão 1)."""
     campo = esperar_visivel(driver, '[data-testid="prato-nome"]')
     campo.clear()
     campo.send_keys(nome)
+    if porcoes is not None:
+        campo_porcoes = esperar_visivel(driver, '[data-testid="prato-porcoes"]')
+        campo_porcoes.clear()
+        campo_porcoes.send_keys(str(porcoes))
     clicar(driver, driver.find_element(By.CSS_SELECTOR, '[data-testid="prato-adicionar"]'))
     esperar_visivel(driver, seletor_item("prato", nome))
     esperar_campo_vazio(driver, "prato-nome")
+    esperar_campo_valor(driver, "prato-porcoes", "1")
 
 
-def criar_ingrediente(driver, nome, unidade="kg"):
+def criar_ingrediente(driver, nome, unidade="kg", embalagem=None):
+    """Cria um ingrediente; `embalagem` é a tupla (rótulo, quantidade)."""
     campo_nome = esperar_visivel(driver, '[data-testid="ingrediente-nome"]')
     campo_nome.clear()
     campo_nome.send_keys(nome)
     Select(driver.find_element(By.CSS_SELECTOR, '[data-testid="ingrediente-unidade"]')).select_by_value(
         unidade
     )
+    if embalagem:
+        rotulo, quantidade = embalagem
+        campo_rotulo = esperar_visivel(driver, '[data-testid="ingrediente-embalagem-rotulo"]')
+        campo_rotulo.clear()
+        campo_rotulo.send_keys(rotulo)
+        campo_quantidade = esperar_visivel(
+            driver, '[data-testid="ingrediente-embalagem-quantidade"]'
+        )
+        campo_quantidade.clear()
+        campo_quantidade.send_keys(quantidade)
     clicar(driver, driver.find_element(By.CSS_SELECTOR, '[data-testid="ingrediente-adicionar"]'))
     esperar_visivel(driver, seletor_item("ingrediente", nome))
     esperar_campo_vazio(driver, "ingrediente-nome")
+    esperar_campo_vazio(driver, "ingrediente-embalagem-rotulo")
 
 
 def esperar_opcao(driver, testid, texto):
@@ -146,8 +172,12 @@ def esperar_opcao(driver, testid, texto):
     WebDriverWait(driver, TIMEOUT).until(opcao_existe)
 
 
-def criar_receita(driver, prato, ingrediente, quantidade):
-    """Inclui um ingrediente na receita do prato (o formulário deve estar visível)."""
+def criar_receita(driver, prato, ingrediente, quantidade, modo=None):
+    """Inclui um ingrediente na receita do prato (o formulário deve estar visível).
+
+    `modo` é `pessoa` (padrão da tela) ou `receita`, para informar a quantidade
+    da receita inteira (SM-01).
+    """
     esperar_opcao(driver, "receita-prato", prato)
     Select(driver.find_element(By.CSS_SELECTOR, '[data-testid="receita-prato"]')).select_by_visible_text(
         prato
@@ -156,6 +186,10 @@ def criar_receita(driver, prato, ingrediente, quantidade):
     Select(
         driver.find_element(By.CSS_SELECTOR, '[data-testid="receita-ingrediente"]')
     ).select_by_visible_text(ingrediente)
+    if modo:
+        Select(driver.find_element(By.CSS_SELECTOR, '[data-testid="receita-modo"]')).select_by_value(
+            modo
+        )
     campo = esperar_visivel(driver, '[data-testid="receita-quantidade"]')
     campo.clear()
     campo.send_keys(quantidade)
@@ -253,3 +287,112 @@ def excluir_receita(driver, ingrediente):
     clicar(driver, item.find_element(By.CSS_SELECTOR, '[data-testid="receita-excluir"]'))
     confirmar(driver)
     esperar_sumir(driver, seletor)
+
+
+def esperar_atributo(driver, css, atributo, valor):
+    """Espera um atributo do elemento assumir o valor esperado (data-* do React)."""
+    WebDriverWait(driver, TIMEOUT).until(
+        lambda navegador: navegador.find_element(By.CSS_SELECTOR, css).get_attribute(atributo)
+        == valor
+    )
+
+
+def dias_livres(driver):
+    """Dias ainda sem prato no cardápio, na ordem em que aparecem na tela."""
+    return [
+        elemento.get_attribute("data-dia")
+        for elemento in driver.find_elements(By.CSS_SELECTOR, '[data-testid="cardapio-livre"]')
+    ]
+
+
+def criar_dia_cardapio(driver, dia, prato, pessoas=2):
+    """Preenche o formulário do cardápio e espera o dia aparecer planejado."""
+    esperar_opcao(driver, "cardapio-dia", dia)
+    Select(driver.find_element(By.CSS_SELECTOR, '[data-testid="cardapio-dia"]')).select_by_value(
+        dia
+    )
+    esperar_opcao(driver, "cardapio-prato", prato)
+    Select(
+        driver.find_element(By.CSS_SELECTOR, '[data-testid="cardapio-prato"]')
+    ).select_by_visible_text(prato)
+    campo = esperar_visivel(driver, '[data-testid="cardapio-pessoas"]')
+    campo.clear()
+    campo.send_keys(str(pessoas))
+    clicar(driver, driver.find_element(By.CSS_SELECTOR, '[data-testid="cardapio-adicionar"]'))
+    esperar_visivel(driver, f'[data-testid="cardapio-item"][data-dia="{dia}"]')
+    esperar_texto(driver, prato)
+
+
+def excluir_dia_cardapio(driver, dia):
+    """Remove um dia do cardápio, se ele existir, e espera o cartão ficar livre."""
+    seletor = f'[data-testid="cardapio-item"][data-dia="{dia}"]'
+    try:
+        item = driver.find_element(By.CSS_SELECTOR, seletor)
+    except NoSuchElementException:
+        return
+
+    clicar(driver, item.find_element(By.CSS_SELECTOR, '[data-testid="cardapio-excluir"]'))
+    confirmar(driver)
+    esperar_sumir(driver, seletor)
+    esperar_visivel(driver, f'[data-testid="cardapio-livre"][data-dia="{dia}"]')
+
+
+def abrir_ingredientes_do_dia(driver, dia):
+    """Abre o bloco de ingredientes de um dia do cardápio."""
+    item = esperar_visivel(driver, f'[data-testid="cardapio-item"][data-dia="{dia}"]')
+    detalhes = item.find_element(By.CSS_SELECTOR, '[data-testid="cardapio-detalhes"]')
+    if detalhes.get_attribute("open") is None:
+        clicar(driver, detalhes.find_element(By.TAG_NAME, "summary"))
+    return detalhes
+
+
+def quantidade_do_dia(driver, dia, ingrediente):
+    """Quantidade total de um ingrediente em um dia: qtd por pessoa × pessoas."""
+    detalhes = abrir_ingredientes_do_dia(driver, dia)
+    linha = detalhes.find_element(
+        By.CSS_SELECTOR, f'[data-testid="cardapio-ingrediente"][data-ingrediente="{ingrediente}"]'
+    )
+    return linha.find_element(By.CSS_SELECTOR, '[data-testid="cardapio-quantidade-valor"]').text
+
+
+def item_compra(driver, ingrediente):
+    return esperar_visivel(
+        driver, f'[data-testid="compras-item"][data-ingrediente="{ingrediente}"]'
+    )
+
+
+def embalagem_da_lista(driver, ingrediente):
+    """Texto de compra por embalagem na lista (SM-01), ou None se não houver."""
+    item = item_compra(driver, ingrediente)
+    try:
+        return item.find_element(By.CSS_SELECTOR, '[data-testid="compras-embalagem"]').text
+    except NoSuchElementException:
+        return None
+
+
+def marcar_compra(driver, ingrediente, comprado=True):
+    """Alterna a marcação de comprado e espera o estado refletir na linha."""
+    item = item_compra(driver, ingrediente)
+    esperado = "true" if comprado else "false"
+    atual = item.get_attribute("data-comprado")
+    if atual == esperado:
+        return
+
+    clicar(driver, item.find_element(By.CSS_SELECTOR, '[data-testid="compras-check"]'))
+    esperar_atributo(
+        driver,
+        f'[data-testid="compras-item"][data-ingrediente="{ingrediente}"]',
+        "data-comprado",
+        esperado,
+    )
+
+
+def limpar_marcacoes(driver):
+    """Limpa todas as marcações de compra pelo botão da lista."""
+    clicar(driver, esperar_visivel(driver, '[data-testid="compras-limpar"]'))
+    confirmar(driver)
+    WebDriverWait(driver, TIMEOUT).until(
+        lambda navegador: navegador.find_element(
+            By.CSS_SELECTOR, '[data-testid="compras-progresso"]'
+        ).text.startswith("0 de")
+    )

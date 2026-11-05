@@ -50,6 +50,7 @@ export function Aplicacao() {
           ingredientes: dados.ingredientes.length,
           receitas: dados.receitas.length,
           despensa: dados.despensa.length,
+          cardapio: dados.cardapio.length,
         }}
       />
 

@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { deleteField, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebaseConfig';
 import type { Receita } from '../../types';
 import { idReceita } from '../utils';
@@ -9,10 +9,10 @@ import {
   validarQuantidade,
 } from './comum';
 
-/** Quantidade por pessoa: maior que zero (Tabela 3 do DRE). */
-export function validarQuantidadePorPessoa(valor: number): number {
+/** Quantidade da receita (receita inteira): maior que zero (Tabela 3 do DRE). */
+export function validarQuantidadeReceita(valor: number): number {
   return validarQuantidade(valor, {
-    rotulo: 'quantidade por pessoa',
+    rotulo: 'quantidade da receita',
     permiteZero: false,
     limite: 99999,
   });
@@ -22,7 +22,7 @@ function dadosReceita(pratoId: string, ingredienteId: string, quantidade: number
   return {
     prato_id: pratoId,
     ingrediente_id: ingredienteId,
-    quantidade_por_pessoa: quantidade,
+    quantidade,
   };
 }
 
@@ -39,15 +39,16 @@ export function receitasDoIngrediente(ingredienteId: string): Promise<Receita[]>
 /**
  * RFS09: inclui um ingrediente na receita de um prato.
  *
- * O id composto garante a regra "um prato não pode ter o mesmo ingrediente
- * duas vezes"; prato e ingrediente precisam existir de fato.
+ * A quantidade é a da receita inteira, para o rendimento do prato (SM-01). O id
+ * composto garante a regra "um prato não pode ter o mesmo ingrediente duas
+ * vezes"; prato e ingrediente precisam existir de fato.
  */
 export async function incluirReceita(
   pratoId: string,
   ingredienteId: string,
-  quantidadePorPessoa: number,
+  quantidade: number,
 ): Promise<void> {
-  const quantidade = validarQuantidadePorPessoa(quantidadePorPessoa);
+  const valor = validarQuantidadeReceita(quantidade);
 
   const [prato, ingrediente] = await Promise.all([
     getDoc(doc(db, 'pratos', pratoId)),
@@ -62,16 +63,24 @@ export async function incluirReceita(
     throw new Error('Esse prato já tem esse ingrediente na receita. Altere a quantidade na lista.');
   }
 
-  await setDoc(doc(db, 'receitas', id), dadosReceita(pratoId, ingredienteId, quantidade));
+  await setDoc(doc(db, 'receitas', id), dadosReceita(pratoId, ingredienteId, valor));
 }
 
-/** RFS11: somente a quantidade por pessoa muda; prato e ingrediente são fixos. */
+/**
+ * RFS11: somente a quantidade muda; prato e ingrediente são fixos.
+ *
+ * `quantidade_por_pessoa` é o campo antigo (antes da SM-01): ao editar, o
+ * documento passa a ter só `quantidade`, sem exigir migração dos dados.
+ */
 export async function alterarQuantidadeReceita(
   receitaId: string,
-  quantidadePorPessoa: number,
+  quantidade: number,
 ): Promise<void> {
-  const quantidade = validarQuantidadePorPessoa(quantidadePorPessoa);
-  await updateDoc(doc(db, 'receitas', receitaId), { quantidade_por_pessoa: quantidade });
+  const valor = validarQuantidadeReceita(quantidade);
+  await updateDoc(doc(db, 'receitas', receitaId), {
+    quantidade: valor,
+    quantidade_por_pessoa: deleteField(),
+  });
 }
 
 /** RFS12: exclui apenas o vínculo; prato e ingrediente continuam cadastrados. */

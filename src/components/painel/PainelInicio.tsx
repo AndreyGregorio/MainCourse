@@ -1,7 +1,17 @@
+import { useMemo } from 'react';
 import type { ReactNode } from 'react';
 import type { RotaId } from '../../lib/rotas';
 import type { Dados } from '../../hooks/useDados';
-import { IconeDespensa, IconeIngrediente, IconePrato, IconeReceita, IconeSeta } from '../ui/Icones';
+import { calcularLista } from '../../lib/listaCompras';
+import {
+  IconeCardapio,
+  IconeCompras,
+  IconeDespensa,
+  IconeIngrediente,
+  IconePrato,
+  IconeReceita,
+  IconeSeta,
+} from '../ui/Icones';
 
 type Props = {
   dados: Dados;
@@ -43,13 +53,29 @@ function Indicador({
 export function PainelInicio({ dados, irPara }: Props) {
   const { pratos, ingredientes, receitas, despensa } = dados;
 
+  const lista = useMemo(
+    () =>
+      calcularLista({
+        cardapio: dados.cardapio,
+        pratos: dados.pratos,
+        receitas: dados.receitas,
+        ingredientes: dados.ingredientes,
+        comprados: dados.comprados,
+        filtroDia: null,
+      }),
+    [dados.cardapio, dados.comprados, dados.ingredientes, dados.pratos, dados.receitas],
+  );
+
   return (
     <div className="mx-auto max-w-6xl space-y-8">
       <h1 className="text-center font-display text-3xl font-bold text-maincourse-navy sm:text-4xl">
         Painel de Controle
       </h1>
 
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label="Resumo do cadastro">
+      <section
+        className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6"
+        aria-label="Resumo do cadastro"
+      >
         <Indicador
           valor={pratos.length}
           rotulo="Pratos"
@@ -73,6 +99,18 @@ export function PainelInicio({ dados, irPara }: Props) {
           rotulo="Despensa"
           icone={<IconeDespensa className="h-5 w-5" />}
           aoAbrir={() => irPara('despensa')}
+        />
+        <Indicador
+          valor={dados.cardapio.length}
+          rotulo="Cardápio"
+          icone={<IconeCardapio className="h-5 w-5" />}
+          aoAbrir={() => irPara('cardapio')}
+        />
+        <Indicador
+          valor={lista.totalItens}
+          rotulo="Compras"
+          icone={<IconeCompras className="h-5 w-5" />}
+          aoAbrir={() => irPara('compras')}
         />
       </section>
     </div>

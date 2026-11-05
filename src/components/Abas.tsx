@@ -2,6 +2,8 @@ import type { ComponentType } from 'react';
 import type { RotaId } from '../lib/rotas';
 import { ROTAS } from '../lib/rotas';
 import {
+  IconeCardapio,
+  IconeCompras,
   IconeDespensa,
   IconeIngrediente,
   IconeInicio,
@@ -20,6 +22,8 @@ const ICONES: Partial<Record<RotaId, ComponentType<{ className?: string }>>> = {
   ingredientes: IconeIngrediente,
   receitas: IconeReceita,
   despensa: IconeDespensa,
+  cardapio: IconeCardapio,
+  compras: IconeCompras,
 };
 
 export function Abas({ rota, contadores = {} }: Props) {
@@ -28,18 +32,18 @@ export function Abas({ rota, contadores = {} }: Props) {
       aria-label="Seções do MainCourse"
       className="border-b border-maincourse-navy/10 bg-white/85 backdrop-blur"
     >
-      <ul className="mx-auto flex max-w-6xl flex-wrap gap-x-1 px-2 sm:flex-nowrap sm:overflow-x-auto sm:px-6">
+      <ul className="mx-auto flex max-w-6xl flex-wrap justify-center gap-x-0 px-2 py-1 sm:flex-nowrap sm:justify-start sm:gap-x-1 sm:overflow-x-auto sm:px-6 sm:py-0">
         {ROTAS.map((item) => {
           const ativa = item.id === rota;
           const Icone = ICONES[item.id] ?? IconeInicio;
           const contador = contadores[item.id];
           return (
-            <li key={item.id}>
+            <li key={item.id} className="w-1/4 sm:w-auto">
               <a
                 href={`#/${item.id}`}
                 aria-current={ativa ? 'page' : undefined}
                 data-testid={`aba-${item.id}`}
-                className={`inline-flex items-center gap-1.5 whitespace-nowrap border-b-2 px-2.5 py-2.5 text-[13px] font-bold transition sm:gap-2 sm:px-4 sm:py-3 sm:text-sm ${
+                className={`flex w-full flex-col items-center justify-center gap-0.5 whitespace-nowrap border-b-2 px-1 py-1.5 text-[11px] font-bold transition sm:w-auto sm:flex-row sm:gap-2 sm:px-4 sm:py-3 sm:text-sm ${
                   ativa
                     ? 'border-maincourse-gold text-maincourse-navy'
                     : 'border-transparent text-maincourse-navy/55 hover:bg-maincourse-navy/5 hover:text-maincourse-navy'

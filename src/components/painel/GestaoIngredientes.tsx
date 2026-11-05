@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
-import type { Ingrediente, Unidade } from '../../types';
-import { LIMITE_NOME, UNIDADES } from '../../lib/constants';
-import { normalizar, pluralizar } from '../../lib/utils';
+import type { Embalagem, Ingrediente, Unidade } from '../../types';
+import { LIMITE_EMBALAGEM, LIMITE_NOME, UNIDADES } from '../../lib/constants';
+import { analisarQuantidade, normalizar, pluralizar } from '../../lib/utils';
 import { Botao, Campo, Entrada, EstadoVazio, SecaoCard, Selecao, Selo } from '../ui/Basicos';
 import { IconeEditar, IconeExcluir, IconeIngrediente } from '../ui/Icones';
 
@@ -11,8 +11,8 @@ type FiltroUnidade = Unidade | 'todas';
 type Props = {
   ingredientes: Ingrediente[];
   usosPorIngrediente: Map<string, number>;
-  aoCriar: (nome: string, unidade: Unidade) => Promise<boolean>;
-  aoAtualizarUnidade: (nome: string, unidade: Unidade) => Promise<boolean>;
+  aoCriar: (nome: string, unidade: Unidade, embalagem: Embalagem | null) => Promise<boolean>;
+  aoAtualizar: (nome: string, unidade: Unidade, embalagem: Embalagem | null) => Promise<boolean>;
   aoRemover: (nome: string) => Promise<boolean>;
 };
 
@@ -20,13 +20,16 @@ export function GestaoIngredientes({
   ingredientes,
   usosPorIngrediente,
   aoCriar,
-  aoAtualizarUnidade,
+  aoAtualizar,
   aoRemover,
 }: Props) {
   const [nome, setNome] = useState('');
   const [unidade, setUnidade] = useState<Unidade>('kg');
+  const [embalagemRotulo, setEmbalagemRotulo] = useState('');
+  const [embalagemQuantidade, setEmbalagemQuantidade] = useState('');
   const [editando, setEditando] = useState<Ingrediente | null>(null);
   const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
   const [busca, setBusca] = useState('');
   const [filtroUnidade, setFiltroUnidade] = useState<FiltroUnidade>('todas');
 
@@ -43,7 +46,20 @@ export function GestaoIngredientes({
   function limpar() {
     setNome('');
     setUnidade('kg');
+    setEmbalagemRotulo('');
+    setEmbalagemQuantidade('');
+    setErro(null);
     setEditando(null);
+  }
+
+  /** Trocar a unidade invalida a embalagem antiga (ela é medida na unidade). */
+  function trocarUnidade(nova: Unidade) {
+    if (nova !== unidade) {
+      setEmbalagemRotulo('');
+      setEmbalagemQuantidade('');
+    }
+    setUnidade(nova);
+    setErro(null);
   }
 
   async function enviar(evento: FormEvent<HTMLFormElement>) {
@@ -51,10 +67,28 @@ export function GestaoIngredientes({
     const nomeLimpo = nome.trim();
     if (!nomeLimpo) return;
 
+    const rotulo = embalagemRotulo.trim();
+    const quantidadeTexto = embalagemQuantidade.trim();
+    let embalagem: Embalagem | null = null;
+
+    if (Boolean(rotulo) !== Boolean(quantidadeTexto)) {
+      setErro('Preencha o rótulo e a quantidade da embalagem, ou deixe os dois vazios.');
+      return;
+    }
+    if (rotulo) {
+      const quantidade = analisarQuantidade(quantidadeTexto);
+      if (quantidade === null || quantidade <= 0) {
+        setErro('A quantidade da embalagem precisa ser um número maior que zero.');
+        return;
+      }
+      embalagem = { rotulo, quantidade };
+    }
+
+    setErro(null);
     setSalvando(true);
     const salvou = editando
-      ? await aoAtualizarUnidade(editando.nome, unidade)
-      : await aoCriar(nomeLimpo, unidade);
+      ? await aoAtualizar(editando.nome, unidade, embalagem)
+      : await aoCriar(nomeLimpo, unidade, embalagem);
     setSalvando(false);
     if (salvou) limpar();
   }
@@ -84,13 +118,15 @@ export function GestaoIngredientes({
           </span>
         </div>
         <p className="mb-4 text-sm leading-relaxed text-maincourse-navy/55">
-          A unidade escolhida vale para todas as receitas e itens de despensa com o mesmo nome.
+          A unidade escolhida vale para todas as receitas e itens de despensa com o mesmo nome. A
+          embalagem é opcional: cadastre-a para a lista de compras dizer quantos pacotes comprar
+          (ex.: “pacote 500 g” em um ingrediente em <strong>kg</strong>).
         </p>
 
         <form
           onSubmit={enviar}
           data-testid="ingrediente-form"
-          className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end"
+          className="mb-5 flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end"
         >
           <Campo
             rotulo={editando ? 'Nome (não editável)' : 'Nome do ingrediente'}
@@ -115,10 +151,10 @@ export function GestaoIngredientes({
               data-testid="ingrediente-nome"
             />
           </Campo>
-          <Campo rotulo="Unidade" className="sm:w-32">
+          <Campo rotulo="Unidade" className="lg:w-28">
             <Selecao
               value={unidade}
-              onChange={(evento) => setUnidade(evento.target.value as Unidade)}
+              onChange={(evento) => trocarUnidade(evento.target.value as Unidade)}
               data-testid="ingrediente-unidade"
             >
               {UNIDADES.map((valor) => (
@@ -127,6 +163,36 @@ export function GestaoIngredientes({
                 </option>
               ))}
             </Selecao>
+          </Campo>
+          <Campo rotulo="Embalagem (opcional)" className="lg:w-52">
+            <Entrada
+              type="text"
+              value={embalagemRotulo}
+              onChange={(evento) => {
+                setEmbalagemRotulo(evento.target.value);
+                setErro(null);
+              }}
+              placeholder="Ex.: pacote 500 g"
+              maxLength={LIMITE_EMBALAGEM}
+              autoComplete="off"
+              aria-label="Rótulo da embalagem de compra"
+              data-testid="ingrediente-embalagem-rotulo"
+            />
+          </Campo>
+          <Campo rotulo={`Qtd. da embalagem (${unidade})`} className="lg:w-40">
+            <Entrada
+              type="text"
+              inputMode="decimal"
+              value={embalagemQuantidade}
+              onChange={(evento) => {
+                setEmbalagemQuantidade(evento.target.value);
+                setErro(null);
+              }}
+              placeholder="Ex.: 0,5"
+              autoComplete="off"
+              aria-label="Quantidade da embalagem na unidade do ingrediente"
+              data-testid="ingrediente-embalagem-quantidade"
+            />
           </Campo>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Botao
@@ -149,6 +215,16 @@ export function GestaoIngredientes({
             )}
           </div>
         </form>
+
+        {erro && (
+          <p
+            role="alert"
+            data-testid="ingrediente-erro"
+            className="mb-4 rounded-xl border border-maincourse-red/30 bg-maincourse-red/5 px-3 py-2 text-sm font-semibold text-maincourse-navy"
+          >
+            {erro}
+          </p>
+        )}
 
         {ingredientes.length === 0 ? (
           <EstadoVazio
@@ -206,6 +282,14 @@ export function GestaoIngredientes({
                           usado em {pluralizar(usos, 'receita', 'receitas')}
                         </span>
                       )}
+                      {ingrediente.embalagem && (
+                        <span
+                          className="mt-0.5 block text-xs font-semibold text-maincourse-navy/45"
+                          data-testid="ingrediente-embalagem"
+                        >
+                          embalagem: {ingrediente.embalagem.rotulo}
+                        </span>
+                      )}
                     </span>
                     <span data-testid="ingrediente-unidade-badge">
                       <Selo tom={ingrediente.unidade_medida === 'L' ? 'gold' : 'navy'}>
@@ -219,6 +303,13 @@ export function GestaoIngredientes({
                           setEditando(ingrediente);
                           setNome(ingrediente.nome);
                           setUnidade(ingrediente.unidade_medida);
+                          setEmbalagemRotulo(ingrediente.embalagem?.rotulo ?? '');
+                          setEmbalagemQuantidade(
+                            ingrediente.embalagem
+                              ? String(ingrediente.embalagem.quantidade).replace('.', ',')
+                              : '',
+                          );
+                          setErro(null);
                         }}
                         className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-bold text-maincourse-navy transition hover:bg-white"
                         aria-label={`Editar a unidade de ${ingrediente.nome}`}

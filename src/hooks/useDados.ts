@@ -1,14 +1,23 @@
 import { useCallback, useMemo } from 'react';
 import type {
   CategoriaDespensa,
+  DiaCardapio,
+  DiaSemana,
   Ingrediente,
   ItemDespensa,
   Prato,
   ReceitaDetalhada,
 } from '../types';
-import { CATEGORIAS_DESPENSA } from '../lib/constants';
-import { mapearIngrediente, mapearItemDespensa, mapearPrato, mapearReceita } from '../lib/mapeadores';
-import { compararNomes } from '../lib/utils';
+import { CATEGORIAS_DESPENSA, DIAS_SEMANA } from '../lib/constants';
+import {
+  mapearDiaCardapio,
+  mapearIngrediente,
+  mapearItemDespensa,
+  mapearMarcacaoCompra,
+  mapearPrato,
+  mapearReceita,
+} from '../lib/mapeadores';
+import { compararNomes, ordenarDias } from '../lib/utils';
 import { useColecao } from './useColecao';
 
 export type Dados = {
@@ -17,6 +26,16 @@ export type Dados = {
   /** Receitas com os nomes de prato e ingrediente já resolvidos (RFS10). */
   receitas: ReceitaDetalhada[];
   despensa: ItemDespensa[];
+  /** Dias do cardápio, de segunda a sexta (RFS18). */
+  cardapio: DiaCardapio[];
+  /** Consulta rápida do dia preenchido (RFS17). */
+  cardapioPorDia: Map<DiaSemana, DiaCardapio>;
+  /** Pratos que podem ser escolhidos no cardápio (RFS17). */
+  pratosComReceita: Prato[];
+  /** Dias em que cada prato aparece — usado no bloqueio da exclusão (RFS04). */
+  diasPorPrato: Map<string, DiaSemana[]>;
+  /** Ids dos ingredientes marcados como comprados (RF01). */
+  comprados: Set<string>;
   pratosPorId: Map<string, Prato>;
   ingredientesPorId: Map<string, Ingrediente>;
   receitasPorPrato: Map<string, ReceitaDetalhada[]>;
@@ -30,6 +49,7 @@ export type Dados = {
 };
 
 const ORDEM_CATEGORIA = new Map(CATEGORIAS_DESPENSA.map((categoria, indice) => [categoria, indice]));
+const ORDEM_DIA = new Map(DIAS_SEMANA.map((dia, indice) => [dia, indice]));
 
 /**
  * Assina as coleções da release e entrega os dados já ordenados e agrupados.
@@ -43,6 +63,8 @@ export function useDados(): Dados {
   const colecaoIngredientes = useColecao('ingredientes', mapearIngrediente);
   const colecaoReceitas = useColecao('receitas', mapearReceita);
   const colecaoDespensa = useColecao('despensa', mapearItemDespensa);
+  const colecaoCardapio = useColecao('cardapio', mapearDiaCardapio);
+  const colecaoCompras = useColecao('compras', mapearMarcacaoCompra);
 
   const pratos = useMemo(
     () => [...colecaoPratos.dados].sort((a, b) => compararNomes(a.nome, b.nome)),
@@ -110,6 +132,39 @@ export function useDados(): Dados {
     [colecaoDespensa.dados],
   );
 
+  const cardapio = useMemo(
+    () =>
+      [...colecaoCardapio.dados].sort(
+        (a, b) => (ORDEM_DIA.get(a.dia) ?? 99) - (ORDEM_DIA.get(b.dia) ?? 99),
+      ),
+    [colecaoCardapio.dados],
+  );
+
+  const cardapioPorDia = useMemo(
+    () => new Map(cardapio.map((registro) => [registro.dia, registro])),
+    [cardapio],
+  );
+
+  const pratosComReceita = useMemo(
+    () => pratos.filter((prato) => (receitasPorPrato.get(prato.id)?.length ?? 0) > 0),
+    [pratos, receitasPorPrato],
+  );
+
+  const diasPorPrato = useMemo(() => {
+    const mapa = new Map<string, DiaSemana[]>();
+    for (const registro of cardapio) {
+      const dias = mapa.get(registro.prato_id) ?? [];
+      dias.push(registro.dia);
+      mapa.set(registro.prato_id, ordenarDias(dias));
+    }
+    return mapa;
+  }, [cardapio]);
+
+  const comprados = useMemo(
+    () => new Set(colecaoCompras.dados.map((marcacao) => marcacao.ingrediente_id)),
+    [colecaoCompras.dados],
+  );
+
   const despensaPorCategoria = useMemo(() => {
     const mapa = new Map<CategoriaDespensa, ItemDespensa[]>();
     for (const categoria of CATEGORIAS_DESPENSA) mapa.set(categoria, []);
@@ -121,23 +176,49 @@ export function useDados(): Dados {
     return mapa;
   }, [despensa]);
 
-  const colecoes = [colecaoPratos, colecaoIngredientes, colecaoReceitas, colecaoDespensa];
+  const colecoes = [
+    colecaoPratos,
+    colecaoIngredientes,
+    colecaoReceitas,
+    colecaoDespensa,
+    colecaoCardapio,
+    colecaoCompras,
+  ];
 
   const datas = colecoes
     .map((colecao) => colecao.atualizadoEm)
     .filter((data): data is Date => data instanceof Date);
 
   const recarregar = useCallback(() => {
-    for (const colecao of [colecaoPratos, colecaoIngredientes, colecaoReceitas, colecaoDespensa]) {
+    for (const colecao of [
+      colecaoPratos,
+      colecaoIngredientes,
+      colecaoReceitas,
+      colecaoDespensa,
+      colecaoCardapio,
+      colecaoCompras,
+    ]) {
       colecao.recarregar();
     }
-  }, [colecaoPratos, colecaoIngredientes, colecaoReceitas, colecaoDespensa]);
+  }, [
+    colecaoPratos,
+    colecaoIngredientes,
+    colecaoReceitas,
+    colecaoDespensa,
+    colecaoCardapio,
+    colecaoCompras,
+  ]);
 
   return {
     pratos,
     ingredientes,
     receitas,
     despensa,
+    cardapio,
+    cardapioPorDia,
+    pratosComReceita,
+    diasPorPrato,
+    comprados,
     pratosPorId,
     ingredientesPorId,
     receitasPorPrato,

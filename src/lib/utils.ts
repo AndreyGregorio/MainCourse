@@ -1,5 +1,5 @@
-import type { CategoriaDespensa, Unidade } from '../types';
-import { CASAS_QUANTIDADE } from './constants';
+import type { CategoriaDespensa, DiaSemana, Unidade } from '../types';
+import { CASAS_QUANTIDADE, DIA_ABREVIADO, DIAS_SEMANA } from './constants';
 
 const FATOR_QUANTIDADE = 10 ** CASAS_QUANTIDADE;
 
@@ -43,6 +43,30 @@ export function normalizarCategoria(valor: unknown): CategoriaDespensa {
   if (v === 'salada') return 'Salada';
   if (v === 'temperos') return 'Temperos';
   return 'Itens Gerais';
+}
+
+/** Dia do cardápio normalizado (`terça` -> `Terça`); null quando não é um dia válido. */
+export function normalizarDia(valor: unknown): DiaSemana | null {
+  const v = normalizar(String(valor ?? ''));
+  return DIAS_SEMANA.find((dia) => normalizar(dia) === v) ?? null;
+}
+
+/** Id do documento de um dia do cardápio: `Segunda` -> `segunda`, `Terça` -> `terca`. */
+export function idDia(dia: DiaSemana): string {
+  return normalizar(dia);
+}
+
+/** Ordena dias na ordem fixa de segunda a sexta (RFS18). */
+export function ordenarDias(dias: DiaSemana[]): DiaSemana[] {
+  const ordem = new Map(DIAS_SEMANA.map((dia, indice) => [dia, indice]));
+  return [...dias].sort((a, b) => (ordem.get(a) ?? 99) - (ordem.get(b) ?? 99));
+}
+
+/** "Seg, Qua e Sex" — abreviações na ordem da semana. */
+export function rotuloDias(dias: DiaSemana[]): string {
+  return ordenarDias(dias)
+    .map((dia) => DIA_ABREVIADO[dia])
+    .join(', ');
 }
 
 /** Parte usada no id composto de um item da despensa: "itens-gerais". */
@@ -100,6 +124,37 @@ export function formatarQuantidade(valor: number): string {
 /** Quantidade com a unidade: "1,5 kg". */
 export function formatarQuantidadeComUnidade(valor: number, unidade: Unidade): string {
   return `${formatarQuantidade(valor)} ${unidade}`;
+}
+
+/** Copia um texto para a área de transferência, com alternativa para navegadores antigos. */
+export async function copiarTexto(texto: string): Promise<void> {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(texto);
+    return;
+  }
+
+  const area = document.createElement('textarea');
+  area.value = texto;
+  area.setAttribute('readonly', '');
+  area.style.position = 'fixed';
+  area.style.opacity = '0';
+  document.body.appendChild(area);
+  area.select();
+  document.execCommand('copy');
+  document.body.removeChild(area);
+}
+
+/** Baixa um CSV em UTF-8 com BOM, para o Excel reconhecer os acentos. */
+export function baixarCsv(nome: string, conteudo: string): void {
+  const blob = new Blob([`\uFEFF${conteudo}`], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = nome;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 /** "12:31" ou "ontem"? Hora local e, quando não for hoje, dia/mês. */
