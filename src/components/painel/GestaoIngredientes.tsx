@@ -125,7 +125,6 @@ export function GestaoIngredientes({
 
         <form
           onSubmit={enviar}
-          data-testid="ingrediente-form"
           className="mb-5 flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end"
         >
           <Campo
@@ -148,14 +147,12 @@ export function GestaoIngredientes({
               readOnly={Boolean(editando)}
               aria-readonly={Boolean(editando)}
               className={editando ? 'bg-maincourse-navy/5' : ''}
-              data-testid="ingrediente-nome"
             />
           </Campo>
           <Campo rotulo="Unidade" className="lg:w-28">
             <Selecao
               value={unidade}
               onChange={(evento) => trocarUnidade(evento.target.value as Unidade)}
-              data-testid="ingrediente-unidade"
             >
               {UNIDADES.map((valor) => (
                 <option key={valor} value={valor}>
@@ -176,7 +173,6 @@ export function GestaoIngredientes({
               maxLength={LIMITE_EMBALAGEM}
               autoComplete="off"
               aria-label="Rótulo da embalagem de compra"
-              data-testid="ingrediente-embalagem-rotulo"
             />
           </Campo>
           <Campo rotulo={`Qtd. da embalagem (${unidade})`} className="lg:w-40">
@@ -191,7 +187,6 @@ export function GestaoIngredientes({
               placeholder="Ex.: 0,5"
               autoComplete="off"
               aria-label="Quantidade da embalagem na unidade do ingrediente"
-              data-testid="ingrediente-embalagem-quantidade"
             />
           </Campo>
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -199,7 +194,6 @@ export function GestaoIngredientes({
               type="submit"
               carregando={salvando}
               className="w-full sm:w-auto"
-              data-testid="ingrediente-adicionar"
             >
               {editando ? 'Salvar' : 'Adicionar'}
             </Botao>
@@ -219,7 +213,6 @@ export function GestaoIngredientes({
         {erro && (
           <p
             role="alert"
-            data-testid="ingrediente-erro"
             className="mb-4 rounded-xl border border-maincourse-red/30 bg-maincourse-red/5 px-3 py-2 text-sm font-semibold text-maincourse-navy"
           >
             {erro}
@@ -241,14 +234,12 @@ export function GestaoIngredientes({
                 onChange={(evento) => setBusca(evento.target.value)}
                 placeholder="Filtrar ingrediente…"
                 aria-label="Filtrar ingredientes pelo nome"
-                data-testid="ingrediente-busca"
                 className="w-full rounded-xl border border-maincourse-navy/15 bg-maincourse-cream/50 p-3 text-base text-maincourse-navy outline-none transition placeholder:text-maincourse-navy/35 focus:border-maincourse-gold focus:ring-2 focus:ring-maincourse-gold/25"
               />
               <select
                 value={filtroUnidade}
                 onChange={(evento) => setFiltroUnidade(evento.target.value as FiltroUnidade)}
                 aria-label="Filtrar ingredientes pela unidade"
-                data-testid="ingrediente-filtro"
                 className="w-full rounded-xl border border-maincourse-navy/15 bg-maincourse-cream/50 p-3 text-base text-maincourse-navy outline-none transition focus:border-maincourse-gold focus:ring-2 focus:ring-maincourse-gold/25 sm:w-48"
               >
                 <option value="todas">Todas as unidades</option>
@@ -266,8 +257,6 @@ export function GestaoIngredientes({
                 return (
                   <li
                     key={ingrediente.id}
-                    data-testid="ingrediente-item"
-                    data-nome={ingrediente.nome}
                     className="flex flex-wrap items-center gap-3 rounded-xl border border-maincourse-navy/10 bg-maincourse-cream/50 p-3"
                   >
                     <span className="min-w-0 flex-1">
@@ -277,7 +266,6 @@ export function GestaoIngredientes({
                       {usos > 0 && (
                         <span
                           className="mt-0.5 block text-xs font-semibold text-maincourse-navy/45"
-                          data-testid="ingrediente-usos"
                         >
                           usado em {pluralizar(usos, 'receita', 'receitas')}
                         </span>
@@ -285,13 +273,12 @@ export function GestaoIngredientes({
                       {ingrediente.embalagem && (
                         <span
                           className="mt-0.5 block text-xs font-semibold text-maincourse-navy/45"
-                          data-testid="ingrediente-embalagem"
                         >
                           embalagem: {ingrediente.embalagem.rotulo}
                         </span>
                       )}
                     </span>
-                    <span data-testid="ingrediente-unidade-badge">
+                    <span>
                       <Selo tom={ingrediente.unidade_medida === 'L' ? 'gold' : 'navy'}>
                         {ingrediente.unidade_medida}
                       </Selo>
@@ -313,7 +300,6 @@ export function GestaoIngredientes({
                         }}
                         className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-bold text-maincourse-navy transition hover:bg-white"
                         aria-label={`Editar a unidade de ${ingrediente.nome}`}
-                        data-testid="ingrediente-editar"
                       >
                         <IconeEditar />
                         <span className="hidden sm:inline">Editar</span>
@@ -323,7 +309,6 @@ export function GestaoIngredientes({
                         onClick={() => void aoRemover(ingrediente.nome)}
                         className="inline-flex items-center rounded-lg px-3 py-2 text-sm font-bold text-maincourse-red transition hover:bg-white"
                         aria-label={`Excluir ${ingrediente.nome}`}
-                        data-testid="ingrediente-excluir"
                       >
                         <IconeExcluir />
                       </button>

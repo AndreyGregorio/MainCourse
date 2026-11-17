@@ -5,6 +5,7 @@ import type {
   Ingrediente,
   ItemDespensa,
   MarcacaoCompra,
+  MarcacaoCompraDespensa,
   Prato,
   Receita,
 } from '../types';
@@ -88,6 +89,18 @@ export function mapearMarcacaoCompra(id: string, dados: DocumentData): MarcacaoC
   return {
     id,
     ingrediente_id: String(dados.ingrediente_id ?? id),
+    marcado_em: typeof campo?.toDate === 'function' ? campo.toDate() : null,
+  };
+}
+
+export function mapearMarcacaoCompraDespensa(
+  id: string,
+  dados: DocumentData,
+): MarcacaoCompraDespensa {
+  const campo = dados.marcado_em;
+  return {
+    id,
+    item_id: String(dados.item_id ?? id),
     marcado_em: typeof campo?.toDate === 'function' ? campo.toDate() : null,
   };
 }

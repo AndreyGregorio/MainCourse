@@ -42,6 +42,7 @@ export type Acoes = {
   alterarDia: (registro: DiaCardapio, pratoId: string, pessoas: number) => Promise<boolean>;
   excluirDia: (registro: DiaCardapio) => Promise<boolean>;
   marcarComprado: (ingredienteId: string, comprado: boolean) => Promise<boolean>;
+  marcarCompradoDespensa: (itemId: string, comprado: boolean) => Promise<boolean>;
   limparMarcacoes: () => Promise<boolean>;
 };
 
@@ -239,7 +240,8 @@ export function useAcoes(dados: Dados): Acoes {
     async (item: ItemDespensa) => {
       const confirmou = await confirmar({
         titulo: `Excluir “${item.nome}”?`,
-        descricao: 'O item sai da despensa. A lista de compras não é alterada.',
+        descricao:
+          'O item sai da despensa e também deixa de aparecer na lista de compras. Esta ação não pode ser desfeita.',
         textoConfirmar: 'Excluir item',
         perigoso: true,
       });
@@ -299,20 +301,52 @@ export function useAcoes(dados: Dados): Acoes {
     [avisar],
   );
 
+  const marcarCompradoDespensa = useCallback(
+    async (itemId: string, comprado: boolean): Promise<boolean> => {
+      try {
+        await acoes.marcarCompradoDespensa(itemId, comprado);
+        return true;
+      } catch (falha) {
+        avisar(mensagemDeErro(falha), 'erro');
+        return false;
+      }
+    },
+    [avisar],
+  );
+
   const limparMarcacoes = useCallback(async () => {
-    const total = dados.comprados.size;
+    const total = dados.comprados.size + dados.compradosDespensa.size;
     if (total === 0) return true;
+
+    const partes: string[] = [];
+    if (dados.comprados.size > 0) {
+      partes.push(
+        pluralizar(dados.comprados.size, 'item do cardápio', 'itens do cardápio'),
+      );
+    }
+    if (dados.compradosDespensa.size > 0) {
+      partes.push(
+        pluralizar(dados.compradosDespensa.size, 'item da despensa', 'itens da despensa'),
+      );
+    }
 
     const confirmou = await confirmar({
       titulo: 'Limpar as marcações de compra?',
-      descricao: `Os ${total} itens marcados como comprados voltam a ficar pendentes. A lista em si não muda.`,
+      descricao: `As marcações de ${partes.join(' e ')} voltam a ficar pendentes. A lista em si não muda.`,
       textoConfirmar: 'Limpar marcações',
     });
     if (!confirmou) return false;
 
     const mensagem = pluralizar(total, 'marcação de compra limpa', 'marcações de compra limpas');
-    return executar(() => acoes.limparMarcacoes([...dados.comprados]), mensagem + '.');
-  }, [confirmar, dados.comprados, executar]);
+    return executar(
+      () =>
+        acoes.limparMarcacoes(
+          [...dados.comprados],
+          [...dados.compradosDespensa],
+        ),
+      mensagem + '.',
+    );
+  }, [confirmar, dados.comprados, dados.compradosDespensa, executar]);
 
   return {
     salvarPrato,
@@ -330,6 +364,7 @@ export function useAcoes(dados: Dados): Acoes {
     alterarDia,
     excluirDia,
     marcarComprado,
+    marcarCompradoDespensa,
     limparMarcacoes,
   };
 }

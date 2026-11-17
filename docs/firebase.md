@@ -1,7 +1,7 @@
 # Banco de dados do MainCourse no Firebase
 
-Este guia cria o banco do **MainCourse** do zero, no plano gratuito, e liga o app local e o GitHub
-Pages a ele. Tempo estimado: **10 a 15 minutos**.
+Este guia cria o banco do **MainCourse** do zero, no plano gratuito, e liga o app local, o GitHub
+Pages e o Firebase Hosting a ele. Tempo estimado: **10 a 15 minutos**.
 
 > **Por que não dá para usar SQLite/MySQL direto no GitHub Pages?**
 > O Pages é hospedagem estática: entrega HTML, CSS e JS, mas não executa servidor nem aceita conexão
@@ -45,14 +45,15 @@ Pages a ele. Tempo estimado: **10 a 15 minutos**.
    para usuários no Brasil, é a menor latência.
 5. Clique em **Ativar**.
 
-As coleções ainda não existem: `pratos`, `ingredientes`, `receitas`, `despensa`, `cardapio` e
-`compras` são criadas no primeiro cadastro do app.
+As coleções ainda não existem: `pratos`, `ingredientes`, `receitas`, `despensa`, `cardapio`,
+`compras` e `compras_despensa` são criadas no primeiro uso do app.
 
 ## 3. Registrar o app Web
 
 1. Na visão geral do projeto, clique no ícone **`</>`** (Web).
 2. Apelido do app: `MainCourse Web`.
-3. **Não** marque Firebase Hosting (o site fica no GitHub Pages).
+3. **Não** marque Firebase Hosting agora; a R04 publica no Hosting por um workflow separado
+   (veja [`firebase-hosting.md`](firebase-hosting.md)). O site principal continua no GitHub Pages.
 4. Clique em **Registrar app**.
 5. O console mostra um objeto `firebaseConfig` assim:
 
@@ -113,8 +114,8 @@ Se o domínio não estiver autorizado, o login falha com `auth/unauthorized-doma
 As regras desta release:
 
 - exigem usuário autenticado (anônimo serve);
-- permitem apenas as coleções `pratos`, `ingredientes`, `receitas`, `despensa`, `cardapio` e
-  `compras`;
+- permitem apenas as coleções `pratos`, `ingredientes`, `receitas`, `despensa`, `cardapio`,
+  `compras` e `compras_despensa`;
 - validam `nome` (2 a 60 caracteres), `unidade_medida` (`kg`, `L` ou `un`), o rendimento do prato
   (`porcoes_base` inteiro de 1 a 99) e a embalagem opcional (rótulo de 1 a 40 caracteres e
   quantidade maior que zero);
@@ -125,11 +126,14 @@ As regras desta release:
 - validam o dia do cardápio (segunda a sexta, prato de referência e pessoas de 1 a 99) e impedem
   trocar o dia na edição (RFS19);
 - aceitam a marcação de compra `compras/{ingrediente}` com `ingrediente_id` e `marcado_em`;
+- aceitam a marcação da despensa `compras_despensa/{item}` com `item_id` e `marcado_em`;
 - negam todo o resto.
 
 **Publicar as regras é obrigatório a cada release**: sem elas, as seções novas mostram o aviso de
 banco e não gravam. A SM-01 acrescenta `porcoes_base` e `embalagem`; publique o app novo **antes**
-das regras, porque a versão anterior grava campos que as regras novas recusam.
+das regras, porque a versão anterior grava campos que as regras novas recusam. A R04 também
+acrescenta `compras_despensa`: a marcação dos itens da despensa só funciona depois que as regras
+novas estiverem publicadas.
 
 ## 7. Configurar o ambiente local
 
@@ -185,7 +189,7 @@ Depois rode o workflow **Deploy no GitHub Pages** (Actions → Run workflow) ou 
 > vem das regras do Firestore e do domínio autorizado. O que nunca pode ir para o front-end é uma
 > service account ou chave privada.
 
-## Modelo de dados da Release 3 + SM-01
+## Modelo de dados da Release 4
 
 ```text
 pratos/{id}
@@ -219,6 +223,10 @@ cardapio/{dia}
 
 compras/{ingrediente_id}
   ingrediente_id: string
+  marcado_em: timestamp
+
+compras_despensa/{item_id}
+  item_id: string                 // id composto da despensa (`categoria::nome`)
   marcado_em: timestamp
 ```
 
@@ -289,7 +297,9 @@ Exemplo:
 
 A lista de compras **não é uma coleção**: ela é calculada no navegador a partir do cardápio e das
 receitas (RF01/RF02). Só a marcação de comprado fica no Firestore, para acompanhar o usuário entre
-aparelhos e ser removida junto com o ingrediente (RFS08).
+aparelhos e ser removida junto com o ingrediente (RFS08). A partir da R04, a tela de Compras também
+mostra os itens da despensa (RF03), com marcação própria em `compras_despensa`; a quantidade da
+despensa é estoque e não entra no cálculo nem no resumo por unidade.
 
 ### Emuladores (testes sem tocar na produção)
 
@@ -352,9 +362,9 @@ O `firebase.json` deste repositório já aponta para `firestore.rules`.
 | `auth/operation-not-allowed` | Login anônimo desligado. | Authentication → Sign-in method → Anônimo. |
 | `auth/unauthorized-domain` | Domínio fora da lista. | Authentication → Settings → Authorized domains. |
 | `permission-denied` | Regras não publicadas ou leitura antes do login. | Publique as regras e recarregue; o app espera a sessão antes de ler. |
-| `failed-precondition` | Falta índice (não deve ocorrer na R03: as consultas usam um campo só). | Crie o índice indicado no link do erro. |
+| `failed-precondition` | Falta índice (não deve ocorrer na R04: as consultas usam um campo só). | Crie o índice indicado no link do erro. |
 | App abre, mas não grava | Regras antigas ou domínio errado. | Confira as regras publicadas e o console do navegador. |
-| Cardápio ou compras vazios | Regras publicadas ainda são as da R02 (sem `cardapio`/`compras`). | Publique o `firestore.rules` da R03 (seção 6). |
+| Cardápio, compras ou despensa vazios | Regras publicadas ainda são de uma release anterior (sem `cardapio`, `compras` ou `compras_despensa`). | Publique o `firestore.rules` da R04 (seção 6). |
 | `auth/invalid-api-key` | Chave truncada/colada errada. | Revise o secret e o `.env.local`. |
 
 ## Checklist final
@@ -369,3 +379,6 @@ O `firebase.json` deste repositório já aponta para `firestore.rules`.
 - [ ] Workflow executado sem erro
 - [ ] App no Pages cadastrando pratos, ingredientes, receitas, itens da despensa e dias do cardápio
 - [ ] Lista de compras calculada a partir do cardápio e marcações de compra funcionando
+- [ ] Itens da despensa aparecendo em Compras e marcação própria funcionando
+- [ ] Manual do usuário acessível na aba Manual
+- [ ] Firebase Hosting configurado (opcional; veja `docs/firebase-hosting.md`)

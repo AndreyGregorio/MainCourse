@@ -59,7 +59,6 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
                 type="button"
                 autoFocus
                 onClick={() => responder(false)}
-                data-testid="cancelar"
                 className="rounded-xl border border-maincourse-navy/20 px-5 py-3 font-semibold text-maincourse-navy/70 transition hover:bg-maincourse-navy/5"
               >
                 {pendente.textoCancelar ?? 'Cancelar'}
@@ -67,7 +66,6 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
               <button
                 type="button"
                 onClick={() => responder(true)}
-                data-testid="confirmar"
                 className={`rounded-xl px-5 py-3 font-bold text-white transition ${
                   pendente.perigoso
                     ? 'bg-maincourse-red hover:bg-maincourse-red/85'

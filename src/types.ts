@@ -1,4 +1,4 @@
-/** Tipos centrais do MainCourse — Release 3. */
+/** Tipos centrais do MainCourse — Release 4. */
 
 /** Unidades de medida aceitas pelo DRE (RFS05, RFS13). */
 export type Unidade = 'kg' | 'L' | 'un';
@@ -111,5 +111,17 @@ export type DiaCardapio = {
 export type MarcacaoCompra = {
   id: string;
   ingrediente_id: string;
+  marcado_em: Date | null;
+};
+
+/**
+ * Coleção `compras_despensa` — marcação de item da despensa já comprado (RF03).
+ *
+ * Fica em uma coleção separada de `compras` porque o id de um item da despensa
+ * é composto (`categoria::nome`) e pode coincidir com o id de um ingrediente.
+ */
+export type MarcacaoCompraDespensa = {
+  id: string;
+  item_id: string;
   marcado_em: Date | null;
 };

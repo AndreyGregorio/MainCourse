@@ -88,7 +88,6 @@ export function GestaoPratos({
 
         <form
           onSubmit={enviar}
-          data-testid="prato-form"
           className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end"
         >
           <Campo
@@ -104,7 +103,6 @@ export function GestaoPratos({
               placeholder="Ex.: Lasanha à bolonhesa"
               maxLength={LIMITE_NOME}
               autoComplete="off"
-              data-testid="prato-nome"
             />
           </Campo>
           <Campo rotulo="Rende (porções)" className="sm:w-40">
@@ -118,7 +116,6 @@ export function GestaoPratos({
               value={porcoes}
               onChange={(evento) => setPorcoes(evento.target.value)}
               aria-label="Quantas porções a receita do prato rende"
-              data-testid="prato-porcoes"
             />
           </Campo>
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -126,7 +123,6 @@ export function GestaoPratos({
               type="submit"
               carregando={salvando}
               className="w-full sm:w-auto"
-              data-testid="prato-adicionar"
             >
               {editando ? 'Salvar' : 'Adicionar'}
             </Botao>
@@ -161,7 +157,6 @@ export function GestaoPratos({
                 onChange={(evento) => setBusca(evento.target.value)}
                 placeholder="Filtrar prato pelo nome…"
                 aria-label="Filtrar pratos pelo nome"
-                data-testid="prato-busca"
                 className="w-full rounded-xl border border-maincourse-navy/15 bg-maincourse-cream/50 p-3 text-base text-maincourse-navy outline-none transition placeholder:text-maincourse-navy/35 focus:border-maincourse-gold focus:ring-2 focus:ring-maincourse-gold/25 sm:w-64"
               />
             </div>
@@ -172,8 +167,6 @@ export function GestaoPratos({
                 return (
                   <li
                     key={prato.id}
-                    data-testid="prato-item"
-                    data-nome={prato.nome}
                     className="flex flex-wrap items-center gap-3 rounded-xl border border-maincourse-navy/10 bg-maincourse-cream/50 p-3"
                   >
                     <span
@@ -186,12 +179,11 @@ export function GestaoPratos({
                     {prato.porcoes_base > 1 && (
                       <span
                         className="text-xs font-semibold text-maincourse-navy/45"
-                        data-testid="prato-porcoes-valor"
                       >
                         rende {pluralizar(prato.porcoes_base, 'porção', 'porções')}
                       </span>
                     )}
-                    <span data-testid="prato-receita-selo">
+                    <span>
                       <Selo tom={receitas > 0 ? 'gold' : 'cinza'}>
                         {receitas > 0
                           ? `${receitas} ingrediente${receitas > 1 ? 's' : ''}`
@@ -204,7 +196,6 @@ export function GestaoPratos({
                         onClick={() => aoAbrirReceitas(prato.id)}
                         className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-bold text-maincourse-navy transition hover:bg-white"
                         aria-label={`Ver a receita de ${prato.nome}`}
-                        data-testid="prato-receita"
                       >
                         <IconeReceita className="h-4 w-4" />
                         <span className="hidden sm:inline">Receita</span>
@@ -218,7 +209,6 @@ export function GestaoPratos({
                         }}
                         className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-bold text-maincourse-navy transition hover:bg-white"
                         aria-label={`Editar ${prato.nome}`}
-                        data-testid="prato-editar"
                       >
                         <IconeEditar />
                         <span className="hidden sm:inline">Editar</span>
@@ -228,7 +218,6 @@ export function GestaoPratos({
                         onClick={() => void aoRemover(prato.nome)}
                         className="inline-flex items-center rounded-lg px-3 py-2 text-sm font-bold text-maincourse-red transition hover:bg-white"
                         aria-label={`Excluir ${prato.nome}`}
-                        data-testid="prato-excluir"
                       >
                         <IconeExcluir />
                       </button>

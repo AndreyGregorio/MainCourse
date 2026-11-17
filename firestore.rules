@@ -9,6 +9,7 @@ rules_version = '2';
 //   despensa     → { nome, categoria, quantidade, unidade_medida, observacao } (RFS13–RFS16)
 //   cardapio     → { dia, prato_id, pessoas }                      (RFS17–RFS20)
 //   compras      → { ingrediente_id, marcado_em }                  (RF01–RF02)
+//   compras_despensa → { item_id, marcado_em }                     (RF03)
 //
 // O acesso exige uma sessão (mesmo anônima), criada pelo app em
 // src/firebaseConfig.ts. Sem o provedor "Anônimo" ativo no Firebase
@@ -164,6 +165,19 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['ingrediente_id', 'marcado_em'])
         && request.resource.data.ingrediente_id == ingredienteId
         && ingredienteId.size() <= 100
+        && request.resource.data.marcado_em is timestamp;
+      allow delete: if autenticado();
+    }
+
+    // Coleção `compras_despensa` — marcação de item da despensa (RF03).
+    // Fica separada de `compras` porque o id composto da despensa
+    // (`categoria::nome`) pode coincidir com o id de um ingrediente.
+    match /compras_despensa/{itemId} {
+      allow read: if autenticado();
+      allow create, update: if autenticado()
+        && request.resource.data.keys().hasOnly(['item_id', 'marcado_em'])
+        && request.resource.data.item_id == itemId
+        && itemId.size() <= 100
         && request.resource.data.marcado_em is timestamp;
       allow delete: if autenticado();
     }

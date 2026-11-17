@@ -6,7 +6,8 @@ export type RotaId =
   | 'receitas'
   | 'despensa'
   | 'cardapio'
-  | 'compras';
+  | 'compras'
+  | 'manual';
 
 export type Rota = {
   id: RotaId;
@@ -21,6 +22,7 @@ export const ROTAS: Rota[] = [
   { id: 'despensa', rotulo: 'Despensa' },
   { id: 'cardapio', rotulo: 'Cardápio' },
   { id: 'compras', rotulo: 'Compras' },
+  { id: 'manual', rotulo: 'Manual' },
 ];
 
 export const ROTA_PADRAO: RotaId = 'inicio';

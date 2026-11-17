@@ -203,7 +203,6 @@ export function GestaoReceitas({
           {pratoAtualObj && (
             <p
               className="mb-4 text-xs font-semibold text-maincourse-navy/50"
-              data-testid="receita-rendimento"
             >
               “{pratoAtualObj.nome}” rende {pluralizar(porcoes, 'porção', 'porções')}. O rendimento
               é editado em Pratos.
@@ -212,7 +211,6 @@ export function GestaoReceitas({
 
           <form
             onSubmit={enviar}
-            data-testid="receita-form"
             className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[1.1fr_1.1fr_0.9fr_0.9fr_auto] lg:items-end"
           >
             <Campo rotulo="Prato" className="min-w-0">
@@ -220,7 +218,6 @@ export function GestaoReceitas({
                 value={pratoAtual}
                 onChange={(evento) => selecionarPrato(evento.target.value)}
                 disabled={Boolean(editando)}
-                data-testid="receita-prato"
                 aria-label="Prato da receita"
               >
                 <option value="">Selecione o prato…</option>
@@ -244,7 +241,6 @@ export function GestaoReceitas({
                   setErroForm(null);
                 }}
                 disabled={Boolean(editando)}
-                data-testid="receita-ingrediente"
                 aria-label="Ingrediente da receita"
               >
                 <option value="">Selecione o ingrediente…</option>
@@ -268,7 +264,6 @@ export function GestaoReceitas({
                   setErroForm(null);
                 }}
                 disabled={Boolean(editando)}
-                data-testid="receita-modo"
                 aria-label="Base da quantidade da receita"
               >
                 <option value="pessoa">Por pessoa</option>
@@ -297,7 +292,6 @@ export function GestaoReceitas({
                 }}
                 placeholder="Ex.: 0,15"
                 autoComplete="off"
-                data-testid="receita-quantidade"
               />
             </Campo>
 
@@ -306,7 +300,6 @@ export function GestaoReceitas({
                 type="submit"
                 carregando={salvando}
                 className="w-full lg:w-auto"
-                data-testid="receita-adicionar"
               >
                 {editando ? 'Salvar' : 'Adicionar'}
               </Botao>
@@ -316,7 +309,6 @@ export function GestaoReceitas({
                   variante="secundario"
                   onClick={limparFormulario}
                   className="w-full lg:w-auto"
-                  data-testid="receita-cancelar"
                 >
                   Cancelar
                 </Botao>
@@ -327,7 +319,6 @@ export function GestaoReceitas({
           {erroForm && (
             <p
               role="alert"
-              data-testid="receita-erro"
               className="mt-3 rounded-lg bg-maincourse-red/10 px-3 py-2 text-sm font-semibold text-maincourse-red"
             >
               {erroForm}
@@ -339,7 +330,6 @@ export function GestaoReceitas({
               <Selecao
                 value={filtroPrato}
                 onChange={(evento) => setFiltroPrato(evento.target.value)}
-                data-testid="receita-filtro-prato"
                 aria-label="Filtrar receitas pelo prato"
               >
                 <option value={TODOS}>Todos os pratos</option>
@@ -354,7 +344,6 @@ export function GestaoReceitas({
               <Selecao
                 value={filtroIngrediente}
                 onChange={(evento) => setFiltroIngrediente(evento.target.value)}
-                data-testid="receita-filtro-ingrediente"
                 aria-label="Filtrar receitas pelo ingrediente"
               >
                 <option value={TODOS}>Todos os ingredientes</option>
@@ -371,7 +360,7 @@ export function GestaoReceitas({
             <h3 className="font-display text-lg font-bold text-maincourse-navy">
               Receitas por prato
             </h3>
-            <p className="text-xs font-semibold text-maincourse-navy/45" data-testid="receita-resumo">
+            <p className="text-xs font-semibold text-maincourse-navy/45">
               {pluralizar(totalFiltrado, 'ingrediente', 'ingredientes')} em{' '}
               {pluralizar(gruposComReceita, 'prato', 'pratos')}
             </p>
@@ -392,8 +381,6 @@ export function GestaoReceitas({
                 .map(({ prato, receitas: doPrato }) => (
                   <li
                     key={prato.id}
-                    data-testid="receita-grupo"
-                    data-prato={prato.nome}
                     className="overflow-hidden rounded-xl border border-maincourse-navy/10 bg-maincourse-cream/40"
                   >
                     <div className="flex flex-wrap items-center gap-2 border-b border-maincourse-navy/10 bg-white/70 px-3 py-2">
@@ -410,9 +397,6 @@ export function GestaoReceitas({
                         .map((receita) => (
                           <li
                             key={receita.id}
-                            data-testid="receita-item"
-                            data-prato={receita.prato_nome}
-                            data-ingrediente={receita.ingrediente_nome}
                             className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5"
                           >
                             <IconeIngrediente className="h-4 w-4 shrink-0 text-maincourse-gold" />
@@ -421,7 +405,6 @@ export function GestaoReceitas({
                             </span>
                             <span
                               className="text-sm font-bold text-maincourse-navy"
-                              data-testid="receita-quantidade-valor"
                             >
                               {formatarQuantidade(receita.quantidade)}{' '}
                               {receita.unidade_medida}
@@ -429,7 +412,6 @@ export function GestaoReceitas({
                             {porcoesDoPrato(prato) > 1 ? (
                               <span
                                 className="text-xs text-maincourse-navy/45"
-                                data-testid="receita-rendimento-valor"
                               >
                                 na receita · rende{' '}
                                 {pluralizar(porcoesDoPrato(prato), 'porção', 'porções')}
@@ -443,7 +425,6 @@ export function GestaoReceitas({
                                 onClick={() => editar(receita)}
                                 className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-bold text-maincourse-navy transition hover:bg-white"
                                 aria-label={`Editar a quantidade de ${receita.ingrediente_nome} em ${receita.prato_nome}`}
-                                data-testid="receita-editar"
                               >
                                 <IconeEditar />
                                 <span className="hidden sm:inline">Editar</span>
@@ -453,7 +434,6 @@ export function GestaoReceitas({
                                 onClick={() => void aoExcluir(receita)}
                                 className="inline-flex items-center rounded-lg px-2.5 py-2 text-sm font-bold text-maincourse-red transition hover:bg-white"
                                 aria-label={`Remover ${receita.ingrediente_nome} da receita de ${receita.prato_nome}`}
-                                data-testid="receita-excluir"
                               >
                                 <IconeExcluir />
                               </button>

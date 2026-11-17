@@ -5,6 +5,9 @@ Firebase e publica o `dist/` no Pages. Não é preciso enviar a pasta `dist/` pa
 
 > O repositório precisa ser **público** para usar o GitHub Pages gratuitamente. Com repositório
 > privado, o Pages exige um plano pago (GitHub Pro/Team/Enterprise).
+>
+> A R04 também pode ser publicada no **Firebase Hosting**, com workflow e guia próprios. Veja
+> [`docs/firebase-hosting.md`](firebase-hosting.md). O Pages continua sendo o deploy contínuo.
 
 ---
 
@@ -123,12 +126,24 @@ gh release create r03 --title "Release 3 — Cardápio e lista de compras" \
   --notes-file docs/releases/r03.md
 ```
 
+Para a **R04** (despensa na lista, manual e encerramento):
+
+```bash
+git add -A
+git commit -m "feat(r04): despensa na lista, manual do usuário e publicação"
+git tag -a r04 -m "Release 4 — Homologação, manual e encerramento"
+git push origin main
+git push origin r04
+gh release create r04 --title "Release 4 — Homologação, manual e encerramento" \
+  --notes-file docs/releases/r04.md
+```
+
 Antes do push, confirme que o `firestore.rules` desta release foi publicado no Firebase
 (Firestore → Regras). O deploy do Pages não publica regras.
 
 As notas ficam em [`docs/releases/r01.md`](releases/r01.md),
-[`docs/releases/r02.md`](releases/r02.md) e [`docs/releases/r03.md`](releases/r03.md), no formato de
-release notes.
+[`docs/releases/r02.md`](releases/r02.md), [`docs/releases/r03.md`](releases/r03.md) e
+[`docs/releases/r04.md`](releases/r04.md), no formato de release notes.
 
 ## 9. Domínio próprio (opcional)
 
@@ -156,6 +171,36 @@ push na main
 O `public/.nojekyll` evita que o Jekyll processe os arquivos e o `public/404.html` devolve o
 visitante para a raiz.
 
+## 11. Testes Selenium no site publicado
+
+O deploy não termina no `deploy-pages`: o workflow [`deploy.yml`](../.github/workflows/deploy.yml)
+tem o job **Fumaça no site publicado (Selenium)**, que roda logo depois e abre a URL publicada em um
+Chrome headless. Ele confere se o painel saiu de "Conectando..." e se as oito abas montam — sem
+gravar nada no Firestore. Se falhar, o artefato `fumaca-selenium` traz o relatório e o screenshot da
+tela.
+
+A suíte completa (CRUDs, cardápio, lista de compras) **não roda contra o Pages**: ela grava e apaga
+documentos, e o banco do Pages é o de produção. Ela roda no workflow **E2E (Selenium)**, que sobe o
+emulador do Firebase e serve um build local — a cada push na `main`, em pull requests e
+manualmente. O artefato `e2e-selenium` traz o relatório e as capturas.
+
+Para rodar na sua máquina, siga [`tests/selenium/README.md`](../tests/selenium/README.md). O resumo:
+
+```bash
+# suíte completa, isolada no emulador
+firebase emulators:start --only firestore,auth --project demo-maincourse
+VITE_USE_EMULATOR=true npm run dev   # em outro terminal
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r tests/selenium/requirements.txt
+BASE_URL=http://localhost:5173/ pytest tests/selenium
+
+# só a fumaça, contra o Pages
+BASE_URL=https://andreygregorio.github.io/MainCourse/ pytest tests/selenium/test_fumaca.py
+```
+
+O `firestore.rules` da release precisa estar publicado no Firebase para o site real funcionar: as
+seções de cardápio, compras e a marcação da despensa dependem das regras novas.
+
 ## Problemas comuns
 
 | Sintoma | Causa | Solução |
@@ -178,6 +223,9 @@ visitante para a raiz.
 - [ ] Workflow verde
 - [ ] `https://andreygregorio.github.io/MainCourse/` abre o app
 - [ ] Domínio autorizado no Firebase
-- [ ] Tag `r03` e GitHub Release criadas
-- [ ] Regras do Firestore da R03 publicadas
+- [ ] Tag `r04` e GitHub Release criadas
+- [ ] Regras do Firestore da R04 publicadas (inclui `compras_despensa`)
 - [ ] Cardápio da semana e lista de compras testados no site publicado
+- [ ] Itens da despensa marcados em Compras no site publicado
+- [ ] Manual do usuário acessível na aba Manual
+- [ ] Firebase Hosting configurado, se for usado

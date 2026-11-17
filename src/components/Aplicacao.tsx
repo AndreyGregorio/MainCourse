@@ -13,7 +13,6 @@ function AvisoBanco({ erro, aoRecarregar }: { erro: string; aoRecarregar: () => 
   return (
     <div
       role="alert"
-      data-testid="aviso-banco"
       className="mx-auto mb-6 max-w-6xl rounded-xl border border-maincourse-red/30 bg-maincourse-red/5 px-4 py-3 text-sm text-maincourse-navy"
     >
       <p className="font-bold text-maincourse-red">O banco de dados não respondeu como esperado</p>
@@ -29,7 +28,7 @@ function AvisoBanco({ erro, aoRecarregar }: { erro: string; aoRecarregar: () => 
   );
 }
 
-export function Aplicacao() {
+export function Aplicacao({ aoAbrirTermos }: { aoAbrirTermos: () => void }) {
   const { rota, parametros, irPara } = useRota();
   const dados = useDados();
   const acoes = useAcoes(dados);
@@ -65,7 +64,7 @@ export function Aplicacao() {
         />
       </main>
 
-      <Rodape />
+      <Rodape aoAbrirTermos={aoAbrirTermos} />
     </div>
   );
 }

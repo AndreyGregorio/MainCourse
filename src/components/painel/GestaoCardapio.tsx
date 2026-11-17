@@ -202,7 +202,6 @@ export function GestaoCardapio({
           <form
             id="cardapio-form"
             onSubmit={enviar}
-            data-testid="cardapio-form"
             className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:items-end"
           >
             <Campo rotulo="Dia da semana" className="min-w-0">
@@ -211,7 +210,6 @@ export function GestaoCardapio({
                 onChange={(evento) => setDiaForm(evento.target.value as DiaSemana)}
                 disabled={Boolean(editando)}
                 aria-readonly={Boolean(editando)}
-                data-testid="cardapio-dia"
               >
                 {editando
                   ? [editando.dia].map((dia) => (
@@ -235,7 +233,6 @@ export function GestaoCardapio({
               <Selecao
                 value={pratoSelecionado}
                 onChange={(evento) => setPratoId(evento.target.value)}
-                data-testid="cardapio-prato"
               >
                 {pratosComReceita.map((prato) => (
                   <option key={prato.id} value={prato.id}>
@@ -255,7 +252,6 @@ export function GestaoCardapio({
                 value={pessoas}
                 onChange={(evento) => setPessoas(evento.target.value)}
                 placeholder="2"
-                data-testid="cardapio-pessoas"
               />
             </Campo>
 
@@ -264,7 +260,6 @@ export function GestaoCardapio({
                 type="submit"
                 carregando={salvando}
                 className="w-full sm:w-auto"
-                data-testid="cardapio-adicionar"
               >
                 {editando ? 'Salvar dia' : 'Adicionar ao cardápio'}
               </Botao>
@@ -274,7 +269,6 @@ export function GestaoCardapio({
                   variante="secundario"
                   onClick={limpar}
                   className="w-full sm:w-auto"
-                  data-testid="cardapio-cancelar"
                 >
                   Cancelar
                 </Botao>
@@ -286,7 +280,6 @@ export function GestaoCardapio({
         {pratoEmEdicaoSemReceita && (
           <p
             role="alert"
-            data-testid="cardapio-aviso-receita"
             className="mt-3 rounded-lg bg-maincourse-gold/15 px-3 py-2 text-sm font-semibold text-maincourse-navy"
           >
             O prato atual deste dia ficou sem receita. Escolha outro prato com ingredientes para
@@ -297,7 +290,6 @@ export function GestaoCardapio({
         {erroForm && (
           <p
             role="alert"
-            data-testid="cardapio-erro"
             className="mt-3 rounded-lg bg-maincourse-red/10 px-3 py-2 text-sm font-semibold text-maincourse-red"
           >
             {erroForm}
@@ -309,7 +301,7 @@ export function GestaoCardapio({
         <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="font-display text-xl font-bold text-maincourse-navy">Semana</h2>
-            <p className="mt-1 text-xs font-semibold text-maincourse-navy/45" data-testid="cardapio-resumo">
+            <p className="mt-1 text-xs font-semibold text-maincourse-navy/45">
               {cardapio.length} de 5 dias planejados ·{' '}
               {pluralizar(totalPessoas, 'pessoa na semana', 'pessoas na semana')}
             </p>
@@ -320,7 +312,6 @@ export function GestaoCardapio({
               onChange={(evento) =>
                 setFiltroDia(evento.target.value as DiaSemana | typeof TODAS)
               }
-              data-testid="cardapio-filtro-dia"
               aria-label="Filtrar o cardápio por dia da semana"
             >
               <option value={TODAS}>Todos os dias</option>
@@ -340,8 +331,6 @@ export function GestaoCardapio({
               return (
                 <div
                   key={dia}
-                  data-testid="cardapio-livre"
-                  data-dia={dia}
                   className="flex flex-col justify-between rounded-xl border border-dashed border-maincourse-navy/25 bg-maincourse-cream/50 p-4"
                 >
                   <div>
@@ -361,7 +350,6 @@ export function GestaoCardapio({
                     className="mt-3 w-full"
                     onClick={() => planejar(dia)}
                     disabled={pratosComReceita.length === 0}
-                    data-testid="cardapio-planejar"
                   >
                     <IconeAdicionar />
                     Planejar {dia.toLowerCase()}
@@ -377,9 +365,6 @@ export function GestaoCardapio({
             return (
               <div
                 key={dia}
-                data-testid="cardapio-item"
-                data-dia={dia}
-                data-prato={prato?.nome ?? registro.prato_id}
                 className="flex flex-col rounded-xl border border-maincourse-navy/10 bg-maincourse-cream/40 p-4"
               >
                 <div className="flex items-center justify-between gap-2">
@@ -389,18 +374,17 @@ export function GestaoCardapio({
 
                 <p
                   className="mt-1 font-semibold text-maincourse-navy"
-                  data-testid="cardapio-prato-nome"
                 >
                   {prato?.nome ?? 'Prato removido'}
                 </p>
                 <p className="mt-0.5 text-xs font-semibold text-maincourse-navy/50">
-                  <span data-testid="cardapio-pessoas-valor">{registro.pessoas}</span>{' '}
+                  <span>{registro.pessoas}</span>{' '}
                   {registro.pessoas === 1 ? 'pessoa' : 'pessoas'} ·{' '}
                   {pluralizar(receitas.length, 'ingrediente', 'ingredientes')}
                 </p>
 
                 {receitas.length > 0 ? (
-                  <details className="mt-2 text-sm" data-testid="cardapio-detalhes">
+                  <details className="mt-2 text-sm">
                     <summary className="cursor-pointer select-none font-semibold text-maincourse-navy/70">
                       Ver ingredientes do dia
                     </summary>
@@ -408,14 +392,11 @@ export function GestaoCardapio({
                       {receitas.map((receita) => (
                         <li
                           key={receita.id}
-                          data-testid="cardapio-ingrediente"
-                          data-ingrediente={receita.ingrediente_nome}
                           className="flex items-baseline justify-between gap-2 text-maincourse-navy/65"
                         >
                           <span className="min-w-0">{receita.ingrediente_nome}</span>
                           <span
                             className="shrink-0 text-xs font-bold text-maincourse-navy"
-                            data-testid="cardapio-quantidade-valor"
                           >
                             {formatarQuantidadeComUnidade(
                               quantidadeParaPessoas(
@@ -437,7 +418,6 @@ export function GestaoCardapio({
                   </details>
                 ) : (
                   <p
-                    data-testid="cardapio-sem-receita"
                     className="mt-2 rounded-lg bg-maincourse-gold/15 px-2.5 py-2 text-xs font-semibold text-maincourse-navy"
                   >
                     Este prato ficou sem receita; o dia não gera itens na lista de compras.
@@ -450,7 +430,6 @@ export function GestaoCardapio({
                     onClick={() => editar(registro)}
                     className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-bold text-maincourse-navy transition hover:bg-white"
                     aria-label={`Editar ${dia}`}
-                    data-testid="cardapio-editar"
                   >
                     <IconeEditar />
                     Editar
@@ -460,7 +439,6 @@ export function GestaoCardapio({
                     onClick={() => irPara('receitas', { prato: registro.prato_id })}
                     className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-bold text-maincourse-navy transition hover:bg-white"
                     aria-label={`Ver a receita de ${prato?.nome ?? 'prato'}`}
-                    data-testid="cardapio-receita"
                   >
                     <IconeReceita />
                     Receita
@@ -470,7 +448,6 @@ export function GestaoCardapio({
                     onClick={() => void aoExcluir(registro)}
                     className="ml-auto inline-flex items-center rounded-lg px-2.5 py-2 text-sm font-bold text-maincourse-red transition hover:bg-white"
                     aria-label={`Excluir ${dia} do cardápio`}
-                    data-testid="cardapio-excluir"
                   >
                     <IconeExcluir />
                   </button>

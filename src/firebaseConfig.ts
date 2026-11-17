@@ -45,11 +45,11 @@ export const db = initializeFirestore(app, {
 });
 
 /**
- * Modo de desenvolvimento/teste: aponta para os emuladores locais.
+ * Modo local: aponta o app para os emuladores do Firebase.
  *
- * Os testes E2E usam esse modo (`VITE_USE_EMULATOR=true`) para rodar sem tocar
- * no banco de produção. Em produção a variável não existe e o app fala com o
- * Firebase configurado nas chaves.
+ * Com `VITE_USE_EMULATOR=true`, o app conversa com os emuladores em
+ * 127.0.0.1 em vez do projeto real — útil para desenvolver sem tocar nos
+ * dados de produção.
  */
 export const usandoEmulador = obterEnv('VITE_USE_EMULATOR') === 'true';
 

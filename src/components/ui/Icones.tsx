@@ -210,3 +210,22 @@ export function IconeSeta({ className = BASE }: Props) {
     </svg>
   );
 }
+
+export function IconeManual({ className = 'h-5 w-5' }: Props) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M12 6.5C10 5 7.5 4.5 5 5v14c2.5-.5 5 0 7 1.5 2-1.5 4.5-2 7-1.5V5c-2.5-.5-5 0-7 1.5Z" />
+      <path d="M12 6.5v14" />
+      <path d="M8 8.5h1.5M8 12h1.5M14.5 8.5H16M14.5 12H16" />
+    </svg>
+  );
+}

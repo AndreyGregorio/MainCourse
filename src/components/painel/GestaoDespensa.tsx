@@ -150,7 +150,6 @@ export function GestaoDespensa({ itens, porCategoria, aoIncluir, aoAlterar, aoEx
 
         <form
           onSubmit={enviar}
-          data-testid="despensa-form"
           className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:items-end"
         >
           <Campo rotulo="Nome" className="min-w-0 sm:col-span-2">
@@ -165,7 +164,6 @@ export function GestaoDespensa({ itens, porCategoria, aoIncluir, aoAlterar, aoEx
               readOnly={Boolean(editando)}
               aria-readonly={Boolean(editando)}
               className={editando ? 'bg-maincourse-navy/5' : ''}
-              data-testid="despensa-nome"
             />
           </Campo>
 
@@ -175,7 +173,6 @@ export function GestaoDespensa({ itens, porCategoria, aoIncluir, aoAlterar, aoEx
               onChange={(evento) =>
                 atualizar('categoria', evento.target.value as CategoriaDespensa)
               }
-              data-testid="despensa-categoria"
             >
               {CATEGORIAS_DESPENSA.map((categoria) => (
                 <option key={categoria} value={categoria}>
@@ -193,7 +190,6 @@ export function GestaoDespensa({ itens, porCategoria, aoIncluir, aoAlterar, aoEx
               onChange={(evento) => atualizar('quantidade', evento.target.value)}
               placeholder="0"
               autoComplete="off"
-              data-testid="despensa-quantidade"
             />
           </Campo>
 
@@ -201,7 +197,6 @@ export function GestaoDespensa({ itens, porCategoria, aoIncluir, aoAlterar, aoEx
             <Selecao
               value={formulario.unidade}
               onChange={(evento) => atualizar('unidade', evento.target.value as Unidade)}
-              data-testid="despensa-unidade"
             >
               {UNIDADES.map((unidade) => (
                 <option key={unidade} value={unidade}>
@@ -223,7 +218,6 @@ export function GestaoDespensa({ itens, porCategoria, aoIncluir, aoAlterar, aoEx
               placeholder="Ex.: marca Y, armário de baixo"
               maxLength={LIMITE_OBSERVACAO}
               autoComplete="off"
-              data-testid="despensa-observacao"
             />
           </Campo>
 
@@ -232,7 +226,6 @@ export function GestaoDespensa({ itens, porCategoria, aoIncluir, aoAlterar, aoEx
               type="submit"
               carregando={salvando}
               className="w-full"
-              data-testid="despensa-adicionar"
             >
               {editando ? 'Salvar' : 'Adicionar'}
             </Botao>
@@ -242,7 +235,6 @@ export function GestaoDespensa({ itens, porCategoria, aoIncluir, aoAlterar, aoEx
                 variante="secundario"
                 onClick={limpar}
                 className="w-full"
-                data-testid="despensa-cancelar"
               >
                 Cancelar
               </Botao>
@@ -253,7 +245,6 @@ export function GestaoDespensa({ itens, porCategoria, aoIncluir, aoAlterar, aoEx
         {erroForm && (
           <p
             role="alert"
-            data-testid="despensa-erro"
             className="mt-3 rounded-lg bg-maincourse-red/10 px-3 py-2 text-sm font-semibold text-maincourse-red"
           >
             {erroForm}
@@ -267,7 +258,6 @@ export function GestaoDespensa({ itens, porCategoria, aoIncluir, aoAlterar, aoEx
               onChange={(evento) =>
                 setFiltroCategoria(evento.target.value as CategoriaDespensa | typeof TODAS)
               }
-              data-testid="despensa-filtro-categoria"
               aria-label="Filtrar despensa pela categoria"
             >
               <option value={TODAS}>Todas as categorias</option>
@@ -285,14 +275,13 @@ export function GestaoDespensa({ itens, porCategoria, aoIncluir, aoAlterar, aoEx
               onChange={(evento) => setBusca(evento.target.value)}
               placeholder="Filtrar item…"
               aria-label="Filtrar itens da despensa pelo nome"
-              data-testid="despensa-busca"
             />
           </Campo>
         </div>
 
         <div className="mt-4 flex flex-wrap items-baseline justify-between gap-2">
           <h3 className="font-display text-lg font-bold text-maincourse-navy">Itens por categoria</h3>
-          <p className="text-xs font-semibold text-maincourse-navy/45" data-testid="despensa-resumo">
+          <p className="text-xs font-semibold text-maincourse-navy/45">
             {pluralizar(filtrados.length, 'item exibido', 'itens exibidos')}
             {emFalta > 0 ? ` · ${pluralizar(emFalta, 'em falta', 'em falta')}` : ''}
           </p>
@@ -321,8 +310,6 @@ export function GestaoDespensa({ itens, porCategoria, aoIncluir, aoAlterar, aoEx
             ).map((categoria) => (
               <section
                 key={categoria}
-                data-testid="despensa-grupo"
-                data-categoria={categoria}
                 className="overflow-hidden rounded-xl border border-maincourse-navy/10 bg-maincourse-cream/40"
               >
                 <div className="flex items-center gap-2 border-b border-maincourse-navy/10 bg-white/70 px-3 py-2">
@@ -339,9 +326,6 @@ export function GestaoDespensa({ itens, porCategoria, aoIncluir, aoAlterar, aoEx
                     .map((item) => (
                       <li
                         key={item.id}
-                        data-testid="despensa-item"
-                        data-nome={item.nome}
-                        data-categoria={item.categoria}
                         className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5"
                       >
                         <span className="min-w-0 flex-1">
@@ -359,7 +343,6 @@ export function GestaoDespensa({ itens, porCategoria, aoIncluir, aoAlterar, aoEx
                         </Selo>
                         <span
                           className="min-w-[3.5rem] text-right text-sm font-bold text-maincourse-navy"
-                          data-testid="despensa-quantidade-valor"
                         >
                           {formatarQuantidade(item.quantidade)}
                         </span>
@@ -374,7 +357,6 @@ export function GestaoDespensa({ itens, porCategoria, aoIncluir, aoAlterar, aoEx
                             onClick={() => editar(item)}
                             className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-bold text-maincourse-navy transition hover:bg-white"
                             aria-label={`Editar ${item.nome}`}
-                            data-testid="despensa-editar"
                           >
                             <IconeEditar />
                             <span className="hidden sm:inline">Editar</span>
@@ -384,7 +366,6 @@ export function GestaoDespensa({ itens, porCategoria, aoIncluir, aoAlterar, aoEx
                             onClick={() => void aoExcluir(item)}
                             className="inline-flex items-center rounded-lg px-2.5 py-2 text-sm font-bold text-maincourse-red transition hover:bg-white"
                             aria-label={`Excluir ${item.nome}`}
-                            data-testid="despensa-excluir"
                           >
                             <IconeExcluir />
                           </button>

@@ -7,6 +7,7 @@ import {
   IconeDespensa,
   IconeIngrediente,
   IconeInicio,
+  IconeManual,
   IconePrato,
   IconeReceita,
 } from './ui/Icones';
@@ -24,6 +25,7 @@ const ICONES: Partial<Record<RotaId, ComponentType<{ className?: string }>>> = {
   despensa: IconeDespensa,
   cardapio: IconeCardapio,
   compras: IconeCompras,
+  manual: IconeManual,
 };
 
 export function Abas({ rota, contadores = {} }: Props) {
@@ -42,7 +44,6 @@ export function Abas({ rota, contadores = {} }: Props) {
               <a
                 href={`#/${item.id}`}
                 aria-current={ativa ? 'page' : undefined}
-                data-testid={`aba-${item.id}`}
                 className={`flex w-full flex-col items-center justify-center gap-0.5 whitespace-nowrap border-b-2 px-1 py-1.5 text-[11px] font-bold transition sm:w-auto sm:flex-row sm:gap-2 sm:px-4 sm:py-3 sm:text-sm ${
                   ativa
                     ? 'border-maincourse-gold text-maincourse-navy'

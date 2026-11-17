@@ -3,6 +3,7 @@ import type {
   DiaSemana,
   Embalagem,
   Ingrediente,
+  ItemDespensa,
   Prato,
   ReceitaDetalhada,
   Unidade,
@@ -78,8 +79,9 @@ export type EntradaLista = {
  * pelas pessoas do cardápio. Quando o ingrediente tem embalagem, a lista
  * também diz quantas embalagens inteiras comprar.
  *
- * O DRE não manda descontar a despensa: a lista é a necessidade do cardápio,
- * e o RFS16 confirma que a despensa não altera a lista.
+ * O DRE não manda descontar a despensa: a lista de ingredientes é a
+ * necessidade do cardápio. Os itens da despensa aparecem em uma seção própria
+ * e não entram neste cálculo (RFS16); a marcação deles é independente (RF03).
  */
 export function calcularLista({
   cardapio,
@@ -180,63 +182,101 @@ export function calcularLista({
 }
 
 /**
- * Texto pronto para compartilhar (RF02): resumo por unidade e itens com
- * quantidade, dias, pratos e a marcação de comprado.
+ * Texto pronto para compartilhar (RF02/RF03): resumo por unidade, itens do
+ * cardápio e, quando houver, os itens da despensa com a marcação de comprado.
  */
 export function textoDaLista(
   itens: ItemLista[],
   resumo: ResumoUnidade[],
   periodo: string,
+  despensa: ItemDespensa[] = [],
+  compradosDespensa: ReadonlySet<string> = new Set(),
 ): string {
   const linhas: string[] = [];
   const comprados = itens.filter((item) => item.comprado).length;
+  const compradosDaDespensa = despensa.filter((item) =>
+    compradosDespensa.has(item.id),
+  ).length;
+  const total = itens.length + despensa.length;
+  const totalComprados = comprados + compradosDaDespensa;
 
   linhas.push('Lista de compras — MainCourse');
   linhas.push(
-    `${periodo} · ${pluralizar(itens.length, 'item', 'itens')} · ${pluralizar(
-      comprados,
+    `${periodo} · ${pluralizar(total, 'item', 'itens')} · ${pluralizar(
+      totalComprados,
       'comprado',
       'comprados',
     )}`,
   );
-  linhas.push('');
 
-  for (const unidade of resumo) {
-    linhas.push(
-      `${unidade.unidade}: ${formatarQuantidade(unidade.quantidade)} ${unidade.unidade} em ${pluralizar(
-        unidade.itens,
-        'item',
-        'itens',
-      )} · ${pluralizar(unidade.comprados, 'comprado', 'comprados')}`,
-    );
+  const comItens = resumo.filter((unidade) => unidade.itens > 0);
+  if (comItens.length > 0) {
+    linhas.push('');
+    for (const unidade of comItens) {
+      linhas.push(
+        `${unidade.unidade}: ${formatarQuantidade(unidade.quantidade)} ${unidade.unidade} em ${pluralizar(
+          unidade.itens,
+          'item',
+          'itens',
+        )} · ${pluralizar(unidade.comprados, 'comprado', 'comprados')}`,
+      );
+    }
   }
 
-  linhas.push('');
+  if (itens.length > 0) {
+    linhas.push('');
+    for (const item of itens) {
+      const marca = item.comprado ? '[x]' : '[ ]';
+      const dias = rotuloDias(item.dias);
+      const pratos = item.pratos.join(', ');
+      const compra =
+        item.embalagens !== null && item.embalagem
+          ? ` — comprar ${textoEmbalagem(item.embalagens, item.embalagem, item.unidade_medida)}`
+          : '';
+      linhas.push(
+        `${marca} ${item.ingrediente_nome} — ${formatarQuantidade(item.quantidade)} ${item.unidade_medida}${compra} — ${dias} — ${pratos}`,
+      );
+    }
+  }
 
-  for (const item of itens) {
-    const marca = item.comprado ? '[x]' : '[ ]';
-    const dias = rotuloDias(item.dias);
-    const pratos = item.pratos.join(', ');
-    const compra =
-      item.embalagens !== null && item.embalagem
-        ? ` — comprar ${textoEmbalagem(item.embalagens, item.embalagem, item.unidade_medida)}`
-        : '';
+  if (despensa.length > 0) {
+    linhas.push('');
+    linhas.push('Despensa');
     linhas.push(
-      `${marca} ${item.ingrediente_nome} — ${formatarQuantidade(item.quantidade)} ${item.unidade_medida}${compra} — ${dias} — ${pratos}`,
+      `${pluralizar(despensa.length, 'item', 'itens')} · ${pluralizar(
+        compradosDaDespensa,
+        'comprado',
+        'comprados',
+      )}`,
     );
+    for (const item of despensa) {
+      const marca = compradosDespensa.has(item.id) ? '[x]' : '[ ]';
+      const falta = item.quantidade === 0 ? ' — em falta' : '';
+      const observacao = item.observacao ? ` — ${item.observacao}` : '';
+      linhas.push(
+        `${marca} ${item.nome} — ${formatarQuantidade(item.quantidade)} ${item.unidade_medida} — ${item.categoria}${falta}${observacao}`,
+      );
+    }
   }
 
   return linhas.join('\n');
 }
 
 /** CSV da lista (compatível com Excel pt-BR: ponto e vírgula e vírgula decimal). */
-export function csvDaLista(itens: ItemLista[]): string {
+export function csvDaLista(
+  itens: ItemLista[],
+  despensa: ItemDespensa[] = [],
+  compradosDespensa: ReadonlySet<string> = new Set(),
+): string {
   const campo = (valor: string) => {
     if (/[";\n]/.test(valor)) return `"${valor.replace(/"/g, '""')}"`;
     return valor;
   };
 
-  const linhas = ['Ingrediente;Quantidade;Unidade;Dias;Pratos;Comprar;Comprado'];
+  const linhas = [
+    'Origem;Item;Quantidade;Unidade;Dias;Pratos;Comprar;Categoria;Observacao;Comprado',
+  ];
+
   for (const item of itens) {
     const compra =
       item.embalagens !== null && item.embalagem
@@ -244,13 +284,33 @@ export function csvDaLista(itens: ItemLista[]): string {
         : '';
     linhas.push(
       [
+        'Cardápio',
         campo(item.ingrediente_nome),
         formatarQuantidade(item.quantidade),
         item.unidade_medida,
         campo(rotuloDias(item.dias)),
         campo(item.pratos.join(' / ')),
         campo(compra),
+        '',
+        '',
         item.comprado ? 'Sim' : 'Não',
+      ].join(';'),
+    );
+  }
+
+  for (const item of despensa) {
+    linhas.push(
+      [
+        'Despensa',
+        campo(item.nome),
+        formatarQuantidade(item.quantidade),
+        item.unidade_medida,
+        '',
+        '',
+        '',
+        campo(item.categoria),
+        campo(item.observacao),
+        compradosDespensa.has(item.id) ? 'Sim' : 'Não',
       ].join(';'),
     );
   }

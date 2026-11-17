@@ -14,6 +14,7 @@ import {
   mapearIngrediente,
   mapearItemDespensa,
   mapearMarcacaoCompra,
+  mapearMarcacaoCompraDespensa,
   mapearPrato,
   mapearReceita,
 } from '../lib/mapeadores';
@@ -36,6 +37,8 @@ export type Dados = {
   diasPorPrato: Map<string, DiaSemana[]>;
   /** Ids dos ingredientes marcados como comprados (RF01). */
   comprados: Set<string>;
+  /** Ids dos itens da despensa marcados como comprados (RF03). */
+  compradosDespensa: Set<string>;
   pratosPorId: Map<string, Prato>;
   ingredientesPorId: Map<string, Ingrediente>;
   receitasPorPrato: Map<string, ReceitaDetalhada[]>;
@@ -65,6 +68,10 @@ export function useDados(): Dados {
   const colecaoDespensa = useColecao('despensa', mapearItemDespensa);
   const colecaoCardapio = useColecao('cardapio', mapearDiaCardapio);
   const colecaoCompras = useColecao('compras', mapearMarcacaoCompra);
+  const colecaoComprasDespensa = useColecao(
+    'compras_despensa',
+    mapearMarcacaoCompraDespensa,
+  );
 
   const pratos = useMemo(
     () => [...colecaoPratos.dados].sort((a, b) => compararNomes(a.nome, b.nome)),
@@ -165,6 +172,11 @@ export function useDados(): Dados {
     [colecaoCompras.dados],
   );
 
+  const compradosDespensa = useMemo(
+    () => new Set(colecaoComprasDespensa.dados.map((marcacao) => marcacao.item_id)),
+    [colecaoComprasDespensa.dados],
+  );
+
   const despensaPorCategoria = useMemo(() => {
     const mapa = new Map<CategoriaDespensa, ItemDespensa[]>();
     for (const categoria of CATEGORIAS_DESPENSA) mapa.set(categoria, []);
@@ -183,6 +195,7 @@ export function useDados(): Dados {
     colecaoDespensa,
     colecaoCardapio,
     colecaoCompras,
+    colecaoComprasDespensa,
   ];
 
   const datas = colecoes
@@ -197,6 +210,7 @@ export function useDados(): Dados {
       colecaoDespensa,
       colecaoCardapio,
       colecaoCompras,
+      colecaoComprasDespensa,
     ]) {
       colecao.recarregar();
     }
@@ -207,6 +221,7 @@ export function useDados(): Dados {
     colecaoDespensa,
     colecaoCardapio,
     colecaoCompras,
+    colecaoComprasDespensa,
   ]);
 
   return {
@@ -219,6 +234,7 @@ export function useDados(): Dados {
     pratosComReceita,
     diasPorPrato,
     comprados,
+    compradosDespensa,
     pratosPorId,
     ingredientesPorId,
     receitasPorPrato,

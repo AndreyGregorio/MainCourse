@@ -11,6 +11,7 @@ import { GestaoReceitas } from './painel/GestaoReceitas';
 import { GestaoDespensa } from './painel/GestaoDespensa';
 import { GestaoCardapio } from './painel/GestaoCardapio';
 import { ListaCompras } from './painel/ListaCompras';
+import { ManualUsuario } from './painel/ManualUsuario';
 
 type Props = {
   rota: RotaId;
@@ -47,7 +48,7 @@ export function TelaPainel({ rota, parametros, irPara, dados, acoes }: Props) {
   const tituloRota = ROTAS.find((item) => item.id === rota)?.rotulo ?? '';
 
   return (
-    <div data-rota={rota} className="pb-4">
+    <div className="pb-4">
       <span className="sr-only" aria-live="polite">
         {tituloRota}
       </span>
@@ -119,12 +120,17 @@ export function TelaPainel({ rota, parametros, irPara, dados, acoes }: Props) {
           pratos={dados.pratos}
           ingredientes={dados.ingredientes}
           receitas={dados.receitas}
+          despensa={dados.despensa}
           comprados={dados.comprados}
+          compradosDespensa={dados.compradosDespensa}
           aoMarcarComprado={acoes.marcarComprado}
+          aoMarcarCompradoDespensa={acoes.marcarCompradoDespensa}
           aoLimparMarcacoes={acoes.limparMarcacoes}
           irPara={irPara}
         />
       )}
+
+      {rota === 'manual' && <ManualUsuario irPara={irPara} />}
     </div>
   );
 }

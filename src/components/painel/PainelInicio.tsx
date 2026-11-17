@@ -107,7 +107,7 @@ export function PainelInicio({ dados, irPara }: Props) {
           aoAbrir={() => irPara('cardapio')}
         />
         <Indicador
-          valor={lista.totalItens}
+          valor={lista.totalItens + dados.despensa.length}
           rotulo="Compras"
           icone={<IconeCompras className="h-5 w-5" />}
           aoAbrir={() => irPara('compras')}
