@@ -16,6 +16,7 @@ import type { Dados } from './useDados';
 
 export type Acoes = {
   salvarPrato: (nome: string, porcoesBase: number, nomeOriginal?: string) => Promise<boolean>;
+  alterarRendimento: (pratoId: string, porcoes: number) => Promise<boolean>;
   removerPrato: (nome: string) => Promise<boolean>;
   criarIngrediente: (
     nome: string,
@@ -107,6 +108,30 @@ export function useAcoes(dados: Dados): Acoes {
       return executar(() => acoes.salvarPrato(nome, porcoesBase, nomeOriginal), mensagem);
     },
     [dados.diasPorPrato, dados.receitasPorPrato, executar],
+  );
+
+  /**
+   * SM-01: ajusta só o rendimento do prato, sem renomear nem migrar vínculos.
+   *
+   * Usado na tela de Receitas para o usuário informar quantas porções a receita
+   * inteira rende no mesmo lugar em que cadastra a quantidade.
+   */
+  const alterarRendimento = useCallback(
+    (pratoId: string, porcoes: number) => {
+      const prato = dados.pratosPorId.get(pratoId);
+      if (!prato) {
+        return Promise.resolve(
+          informarBloqueio('O prato escolhido não está mais cadastrado.'),
+        );
+      }
+      if (prato.porcoes_base === porcoes) return Promise.resolve(true);
+
+      return executar(
+        () => acoes.salvarPrato(prato.nome, porcoes, prato.nome),
+        'Rendimento da receita atualizado.',
+      );
+    },
+    [dados.pratosPorId, executar, informarBloqueio],
   );
 
   const removerPrato = useCallback(
@@ -350,6 +375,7 @@ export function useAcoes(dados: Dados): Acoes {
 
   return {
     salvarPrato,
+    alterarRendimento,
     removerPrato,
     criarIngrediente,
     atualizarIngrediente,

@@ -64,15 +64,32 @@ export function GestaoIngredientes({
 
   async function enviar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
-    const nomeLimpo = nome.trim();
-    if (!nomeLimpo) return;
+    setErro(null);
 
-    const rotulo = embalagemRotulo.trim();
-    const quantidadeTexto = embalagemQuantidade.trim();
+    // Lê o formulário do DOM: se o navegador preencher um campo sem disparar
+    // onChange, o valor visível continua sendo o valor validado.
+    const formulario = new FormData(evento.currentTarget);
+    const nomeLimpo = String(formulario.get('nome') ?? '').trim();
+    if (!nomeLimpo) {
+      setErro('Informe o nome do ingrediente.');
+      return;
+    }
+
+    const unidadeTexto = String(formulario.get('unidade') ?? unidade);
+    const unidadeForm = UNIDADES.includes(unidadeTexto as Unidade)
+      ? (unidadeTexto as Unidade)
+      : unidade;
+
+    const rotulo = String(formulario.get('embalagem-rotulo') ?? '').trim();
+    const quantidadeTexto = String(formulario.get('embalagem-quantidade') ?? '').trim();
     let embalagem: Embalagem | null = null;
 
-    if (Boolean(rotulo) !== Boolean(quantidadeTexto)) {
-      setErro('Preencha o rótulo e a quantidade da embalagem, ou deixe os dois vazios.');
+    if (rotulo && !quantidadeTexto) {
+      setErro('Informe a quantidade da embalagem ou apague o rótulo.');
+      return;
+    }
+    if (!rotulo && quantidadeTexto) {
+      setErro('Informe o rótulo da embalagem ou apague a quantidade.');
       return;
     }
     if (rotulo) {
@@ -84,11 +101,10 @@ export function GestaoIngredientes({
       embalagem = { rotulo, quantidade };
     }
 
-    setErro(null);
     setSalvando(true);
     const salvou = editando
-      ? await aoAtualizar(editando.nome, unidade, embalagem)
-      : await aoCriar(nomeLimpo, unidade, embalagem);
+      ? await aoAtualizar(editando.nome, unidadeForm, embalagem)
+      : await aoCriar(nomeLimpo, unidadeForm, embalagem);
     setSalvando(false);
     if (salvou) limpar();
   }
@@ -137,6 +153,7 @@ export function GestaoIngredientes({
             }
           >
             <Entrada
+              name="nome"
               required
               type="text"
               value={nome}
@@ -151,6 +168,7 @@ export function GestaoIngredientes({
           </Campo>
           <Campo rotulo="Unidade" className="lg:w-28">
             <Selecao
+              name="unidade"
               value={unidade}
               onChange={(evento) => trocarUnidade(evento.target.value as Unidade)}
             >
@@ -161,8 +179,13 @@ export function GestaoIngredientes({
               ))}
             </Selecao>
           </Campo>
-          <Campo rotulo="Embalagem (opcional)" className="lg:w-52">
+          <Campo
+            rotulo="Embalagem (opcional)"
+            className="lg:w-52"
+            dica="Deixe os dois vazios para comprar a granel."
+          >
             <Entrada
+              name="embalagem-rotulo"
               type="text"
               value={embalagemRotulo}
               onChange={(evento) => {
@@ -177,6 +200,7 @@ export function GestaoIngredientes({
           </Campo>
           <Campo rotulo={`Qtd. da embalagem (${unidade})`} className="lg:w-40">
             <Entrada
+              name="embalagem-quantidade"
               type="text"
               inputMode="decimal"
               value={embalagemQuantidade}

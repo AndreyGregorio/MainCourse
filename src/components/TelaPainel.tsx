@@ -84,6 +84,7 @@ export function TelaPainel({ rota, parametros, irPara, dados, acoes }: Props) {
           receitasPorPrato={dados.receitasPorPrato}
           aoIncluir={acoes.incluirReceita}
           aoAlterar={acoes.alterarQuantidadeReceita}
+          aoAjustarRendimento={acoes.alterarRendimento}
           aoExcluir={acoes.excluirReceita}
           irPara={irPara}
           pratoInicial={pratoInicial}

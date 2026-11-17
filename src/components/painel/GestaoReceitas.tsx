@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Ingrediente, Prato, ReceitaDetalhada } from '../../types';
 import type { RotaId } from '../../lib/rotas';
-import { LIMITE_QUANTIDADE } from '../../lib/constants';
+import { LIMITE_PORCOES, LIMITE_QUANTIDADE } from '../../lib/constants';
 import { porcoesDoPrato } from '../../lib/receita';
 import {
   analisarQuantidade,
@@ -21,6 +21,7 @@ type Props = {
   receitasPorPrato: Map<string, ReceitaDetalhada[]>;
   aoIncluir: (pratoId: string, ingredienteId: string, quantidade: number) => Promise<boolean>;
   aoAlterar: (receitaId: string, quantidade: number) => Promise<boolean>;
+  aoAjustarRendimento: (pratoId: string, porcoes: number) => Promise<boolean>;
   aoExcluir: (receita: ReceitaDetalhada) => Promise<boolean>;
   irPara: (rota: RotaId) => void;
   pratoInicial?: string;
@@ -38,6 +39,7 @@ export function GestaoReceitas({
   receitasPorPrato,
   aoIncluir,
   aoAlterar,
+  aoAjustarRendimento,
   aoExcluir,
   irPara,
   pratoInicial,
@@ -67,6 +69,28 @@ export function GestaoReceitas({
 
   const pratoAtualObj = pratos.find((prato) => prato.id === pratoAtual);
   const porcoes = porcoesDoPrato(pratoAtualObj);
+
+  // O rendimento é editável aqui também: sem ele, "receita inteira" vira
+  // "por pessoa" (1 porção) e o cardápio multiplica a quantidade por engano.
+  // O valor digitado fica ligado ao prato selecionado; ao trocar de prato, o
+  // campo volta a mostrar o rendimento gravado no cadastro.
+  const [rendimentoEditado, setRendimentoEditado] = useState<{
+    pratoId: string;
+    valor: string;
+  } | null>(null);
+  const rendimento =
+    rendimentoEditado?.pratoId === pratoAtual
+      ? rendimentoEditado.valor
+      : String(porcoes);
+  const definirRendimento = (valor: string) =>
+    setRendimentoEditado({ pratoId: pratoAtual, valor });
+
+  const rendimentoNumero = Number(rendimento);
+  const rendimentoValido =
+    Number.isInteger(rendimentoNumero) &&
+    rendimentoNumero >= 1 &&
+    rendimentoNumero <= LIMITE_PORCOES;
+  const rendimentoExibido = rendimentoValido ? rendimentoNumero : porcoes;
 
   const ingredienteSelecionado = ingredientes.find((item) => item.id === ingredienteId);
   const unidadeAtual =
@@ -99,25 +123,54 @@ export function GestaoReceitas({
     setPratoId(novoPrato);
     setIngredienteId('');
     setErroForm(null);
+    setRendimentoEditado(null);
   }
 
   async function enviar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
     setErroForm(null);
 
-    if (!pratoAtual) {
+    // Lê o formulário do DOM: o que o usuário vê é o que é validado e salvo,
+    // mesmo quando o navegador preenche um campo sem disparar o onChange.
+    const formulario = new FormData(evento.currentTarget);
+    const pratoForm = editando
+      ? editando.prato_id
+      : String(formulario.get('prato') ?? pratoAtual);
+    const ingredienteForm = editando
+      ? editando.ingrediente_id
+      : String(formulario.get('ingrediente') ?? ingredienteId);
+    const modoTexto = String(formulario.get('modo') ?? modo);
+    // Na edição a quantidade já está gravada como total da receita.
+    const modoForm: ModoQuantidade = editando
+      ? 'receita'
+      : modoTexto === 'receita'
+        ? 'receita'
+        : 'pessoa';
+
+    if (!pratoForm) {
       setErroForm('Escolha o prato da receita.');
       return;
     }
-    if (!editando && !ingredienteId) {
+    if (!ingredienteForm) {
       setErroForm('Escolha o ingrediente que entra no prato.');
       return;
     }
 
-    const valor = analisarQuantidade(quantidade);
+    const rendimentoTexto = String(formulario.get('rendimento') ?? '');
+    const rendimentoNumero = Number(rendimentoTexto);
+    if (
+      !Number.isInteger(rendimentoNumero) ||
+      rendimentoNumero < 1 ||
+      rendimentoNumero > LIMITE_PORCOES
+    ) {
+      setErroForm(`Informe o rendimento da receita, de 1 a ${LIMITE_PORCOES} porções.`);
+      return;
+    }
+
+    const valor = analisarQuantidade(String(formulario.get('quantidade') ?? ''));
     if (valor === null || valor <= 0) {
       setErroForm(
-        modo === 'pessoa'
+        modoForm === 'pessoa'
           ? 'Informe a quantidade por pessoa com um número maior que zero (ex.: 0,15).'
           : 'Informe a quantidade da receita inteira com um número maior que zero (ex.: 0,5).',
       );
@@ -126,17 +179,31 @@ export function GestaoReceitas({
 
     // A receita é guardada para o rendimento do prato (SM-01). No modo "por
     // pessoa", multiplicar pelo rendimento deixa o valor equivalente.
-    const total = arredondarQuantidade(modo === 'pessoa' ? valor * porcoes : valor);
-    const base = modo === 'pessoa' ? 'por pessoa' : 'da receita';
+    const total = arredondarQuantidade(
+      modoForm === 'pessoa' ? valor * rendimentoNumero : valor,
+    );
+    const base = modoForm === 'pessoa' ? 'por pessoa' : 'da receita';
     if (total > LIMITE_QUANTIDADE) {
       setErroForm(`A quantidade ${base} pode ser no máximo ${LIMITE_QUANTIDADE}.`);
       return;
     }
 
+    const pratoDaReceita = pratos.find((prato) => prato.id === pratoForm);
+    const rendimentoAtual = porcoesDoPrato(pratoDaReceita);
+
     setSalvando(true);
+
+    if (rendimentoNumero !== rendimentoAtual) {
+      const ajustou = await aoAjustarRendimento(pratoForm, rendimentoNumero);
+      if (!ajustou) {
+        setSalvando(false);
+        return;
+      }
+    }
+
     const salvou = editando
       ? await aoAlterar(editando.id, total)
-      : await aoIncluir(pratoAtual, ingredienteId, total);
+      : await aoIncluir(pratoForm, ingredienteForm, total);
     setSalvando(false);
 
     if (salvou) {
@@ -146,10 +213,17 @@ export function GestaoReceitas({
 
   function editar(receita: ReceitaDetalhada) {
     const pratoDaReceita = pratos.find((prato) => prato.id === receita.prato_id);
+    const porcoesDaReceita = porcoesDoPrato(pratoDaReceita);
     setEditando(receita);
     setPratoId(receita.prato_id);
     setIngredienteId(receita.ingrediente_id);
-    setModo(porcoesDoPrato(pratoDaReceita) > 1 ? 'receita' : 'pessoa');
+    // A quantidade gravada é sempre o total da receita; mostrar "por pessoa"
+    // aqui faria a edição multiplicar o valor de novo ao salvar.
+    setModo('receita');
+    setRendimentoEditado({
+      pratoId: receita.prato_id,
+      valor: String(porcoesDaReceita),
+    });
     setQuantidade(formatarQuantidade(receita.quantidade));
     setErroForm(null);
   }
@@ -201,20 +275,20 @@ export function GestaoReceitas({
               : 'Um prato não aceita o mesmo ingrediente duas vezes. A unidade vem do cadastro do ingrediente.'}
           </p>
           {pratoAtualObj && (
-            <p
-              className="mb-4 text-xs font-semibold text-maincourse-navy/50"
-            >
-              “{pratoAtualObj.nome}” rende {pluralizar(porcoes, 'porção', 'porções')}. O rendimento
-              é editado em Pratos.
+            <p className="mb-4 text-xs font-semibold text-maincourse-navy/50">
+              “{pratoAtualObj.nome}” · rendimento informado:{' '}
+              {pluralizar(rendimentoExibido, 'porção', 'porções')}. Vale para todas as receitas
+              deste prato e é salvo junto com a receita.
             </p>
           )}
 
           <form
             onSubmit={enviar}
-            className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[1.1fr_1.1fr_0.9fr_0.9fr_auto] lg:items-end"
+            className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:items-end xl:grid-cols-[1.05fr_1.05fr_0.85fr_0.7fr_0.9fr_auto]"
           >
             <Campo rotulo="Prato" className="min-w-0">
               <Selecao
+                name="prato"
                 value={pratoAtual}
                 onChange={(evento) => selecionarPrato(evento.target.value)}
                 disabled={Boolean(editando)}
@@ -235,6 +309,7 @@ export function GestaoReceitas({
               dica={editando ? 'Não pode ser alterado nesta edição.' : undefined}
             >
               <Selecao
+                name="ingrediente"
                 value={ingredienteId}
                 onChange={(evento) => {
                   setIngredienteId(evento.target.value);
@@ -258,6 +333,7 @@ export function GestaoReceitas({
 
             <Campo rotulo="Informar" className="min-w-0">
               <Selecao
+                name="modo"
                 value={modo}
                 onChange={(evento) => {
                   setModo(evento.target.value as ModoQuantidade);
@@ -272,6 +348,28 @@ export function GestaoReceitas({
             </Campo>
 
             <Campo
+              rotulo="Rende (porções)"
+              className="min-w-0"
+              dica="Vale para todas as receitas deste prato."
+            >
+              <Entrada
+                name="rendimento"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={LIMITE_PORCOES}
+                step={1}
+                value={rendimento}
+                onChange={(evento) => {
+                  definirRendimento(evento.target.value);
+                  setErroForm(null);
+                }}
+                required
+                aria-label="Quantas porções a receita do prato rende"
+              />
+            </Campo>
+
+            <Campo
               rotulo={`${modo === 'pessoa' ? 'Quantidade por pessoa' : 'Quantidade na receita'}${
                 unidadeAtual ? ` (${unidadeAtual})` : ''
               }`}
@@ -279,10 +377,15 @@ export function GestaoReceitas({
               dica={
                 modo === 'pessoa'
                   ? 'Vale para 1 pessoa; o cardápio multiplica pelas pessoas do dia.'
-                  : `Vale para a receita inteira (${pluralizar(porcoes, 'porção', 'porções')}).`
+                  : `Vale para a receita inteira (${pluralizar(
+                      rendimentoExibido,
+                      'porção',
+                      'porções',
+                    )}).`
               }
             >
               <Entrada
+                name="quantidade"
                 type="text"
                 inputMode="decimal"
                 value={quantidade}
@@ -315,6 +418,13 @@ export function GestaoReceitas({
               )}
             </div>
           </form>
+
+          {modo === 'receita' && rendimentoExibido <= 1 && (
+            <p className="mt-3 rounded-lg bg-maincourse-gold/15 px-3 py-2 text-xs font-semibold leading-relaxed text-maincourse-navy">
+              Com rendimento 1, “Receita inteira” e “Por pessoa” dão o mesmo resultado. Se a
+              receita serve a travessa toda, informe o rendimento no campo Rende.
+            </p>
+          )}
 
           {erroForm && (
             <p
@@ -409,16 +519,10 @@ export function GestaoReceitas({
                               {formatarQuantidade(receita.quantidade)}{' '}
                               {receita.unidade_medida}
                             </span>
-                            {porcoesDoPrato(prato) > 1 ? (
-                              <span
-                                className="text-xs text-maincourse-navy/45"
-                              >
-                                na receita · rende{' '}
-                                {pluralizar(porcoesDoPrato(prato), 'porção', 'porções')}
-                              </span>
-                            ) : (
-                              <span className="text-xs text-maincourse-navy/45">/ pessoa</span>
-                            )}
+                            <span className="text-xs text-maincourse-navy/45">
+                              na receita · rende{' '}
+                              {pluralizar(porcoesDoPrato(prato), 'porção', 'porções')}
+                            </span>
                             <div className="flex gap-1">
                               <button
                                 type="button"

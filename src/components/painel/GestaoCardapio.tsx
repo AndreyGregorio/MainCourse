@@ -413,7 +413,7 @@ export function GestaoCardapio({
                     <p className="mt-2 text-[11px] text-maincourse-navy/40">
                       {porcoes > 1
                         ? `Quantidade total do dia: receita para ${pluralizar(porcoes, 'porção', 'porções')} distribuída entre ${pluralizar(registro.pessoas, 'pessoa', 'pessoas')}.`
-                        : `Quantidade total do dia: quantidade por pessoa × ${registro.pessoas}.`}
+                        : `Quantidade total do dia: receita para 1 porção × ${pluralizar(registro.pessoas, 'pessoa', 'pessoas')}.`}
                     </p>
                   </details>
                 ) : (
